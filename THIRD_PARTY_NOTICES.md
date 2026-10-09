@@ -8,5 +8,4 @@
 `licenses/dotnet-LICENSE.txt` 和 `licenses/dotnet-THIRD-PARTY-NOTICES.txt`。如果这些文件找不到，发布会失败。
 在重新分发 EXE 时，请保留完整的发布目录；不要只分发可执行文件。
 
-KKS、Koikatsu Sunshine、BepInEx 和 XUnity.AutoTranslator 是第三方项目/产品。
-本项目并不是这些维护者官方发布版本，也不与其有隶属关系。游戏资源和第三方 DLL 不会随本仓库一并打包。
+
