@@ -1,21 +1,20 @@
-# Contributing / 贡献指南
+# 贡献指南 / Contributing
 
-Thanks for helping improve this tool! Pull requests are welcome.
+感谢你帮助改进这个工具！欢迎提交 Pull Request。
 
-1. Create a branch from `main`.
-2. Target .NET 8. Keep scanning strictly **static**: never load or execute user DLLs.
-3. Preserve exact original strings. Don't trim, normalize, translate, or case-fold deduplication keys.
-4. Keep the default TXT output format (`// DLL / Class` followed by `Original=`).
-5. Add self-test cases for behavior changes and run `dotnet run --project src/KksDllStringExtractor -- --self-test`.
-6. Submit a PR explaining the use case, behavioral changes, and test output.
+1. 从 `main` 创建分支。
+2. 目标框架为 .NET 8。扫描逻辑必须严格保持为 静态 分析：绝不能加载或执行用户 DLL。
+3. 保留原始字符串的原样，不要修剪、规范化、翻译或对去重键执行大小写无关处理。
+4. 保持默认 TXT 输出格式（`// DLL / Class` 后跟 `Original=`）。
+5. 为行为变更添加自测用例，并运行 `dotnet run --project src/KksDllStringExtractor -- --self-test`。
+6. 提交 PR 时，请说明使用场景、行为变更和测试输出。
 
 请勿提交游戏资源、第三方插件 DLL、个人翻译数据或包含私人信息的日志。
-When reporting a bug, prefer a minimal artificial sample DLL or a redacted log.
+如需报告 Bug，请优先使用最小化的人工样例 DLL 或经过脱敏处理的日志。
 
-## Development commands
+## 开发命令
 
 ```powershell
 dotnet restore src/KksDllStringExtractor/KksDllStringExtractor.csproj
 dotnet build src/KksDllStringExtractor/KksDllStringExtractor.csproj -c Release
 dotnet run --project src/KksDllStringExtractor -- --self-test
-```
