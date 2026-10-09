@@ -17,7 +17,6 @@ A static, **multilingual** string extractor for **Koikatsu Sunshine (KKS)** BepI
 - Stable special-string IDs across every export; strict UTF-8 / BOM-marked UTF-16 decoding.
 - Text and `.resources` payloads limited to 32,000,000 bytes before reading; unrelated binary resources skipped.
 - Directory errors are logged while accessible siblings continue; directory links are skipped.
-- No CSV/TSV export, no old-results conversion and **no translation loader**.
 
 ## Quick start (Windows)
 
