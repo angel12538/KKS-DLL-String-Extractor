@@ -19,8 +19,7 @@
 - 特殊原文编号在所有导出文件中保持一致；UTF-8、带 BOM 的 UTF-16 均严格解码，异常编码记录错误。
 - 文本与 `.resources` 资源在读取前限制为 32,000,000 字节，其他二进制资源直接跳过。
 - 子目录访问失败时记录错误并继续扫描其他目录；跳过目录联接和符号链接，防止循环扫描。
-- **不包含**旧版结果转换、CSV/TSV 导出或 DLL 汉化注入。
-
+  
 ## Windows 使用
 
 1. 安装 [Microsoft .NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)；首次构建需要联网下载 Mono.Cecil。
