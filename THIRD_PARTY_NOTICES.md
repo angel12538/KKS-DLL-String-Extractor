@@ -1,18 +1,12 @@
-# Third-party dependencies
+# 第三方依赖
 
-This project depends on [Mono.Cecil 0.11.5](https://github.com/jbevain/cecil/tree/0.11.5)
-via NuGet. Copyright (c) 2008 - 2015 Jb Evain; Copyright (c) 2008 - 2011 Novell, Inc.
-Its full MIT/X11 license is included in [licenses/Mono.Cecil-LICENSE.txt](licenses/Mono.Cecil-LICENSE.txt).
-The project LICENSE, this notice and the Mono.Cecil license are copied to all
-build and publish outputs as external files, including single-file builds.
+本项目通过 NuGet 依赖 [Mono.Cecil 0.11.5](https://github.com/jbevain/cecil/tree/0.11.5)。版权归 Jb Evain（2008 - 2015）和 Novell, Inc.（2008 - 2011）所有。
+其完整的 MIT/X11 许可证已包含在 [licenses/Mono.Cecil-LICENSE.txt](licenses/Mono.Cecil-LICENSE.txt) 中。
+项目许可证、此声明以及 Mono.Cecil 许可证都会复制到所有构建和发布输出中，作为外部文件，包括单文件构建。
 
-Self-contained EXE packages also contain the .NET runtime. The publish target
-copies `licenses/dotnet-LICENSE.txt` and `licenses/dotnet-THIRD-PARTY-NOTICES.txt`
-from the actual resolved Microsoft.NETCore.App runtime package. Publishing fails
-if those files cannot be found. Keep the complete publish directory together
-when redistributing the EXE; do not distribute only the executable.
+自包含的 EXE 包还会包含 .NET 运行时。发布目标会从实际解析到的 Microsoft.NETCore.App 运行时包中复制
+`licenses/dotnet-LICENSE.txt` 和 `licenses/dotnet-THIRD-PARTY-NOTICES.txt`。如果这些文件找不到，发布会失败。
+在重新分发 EXE 时，请保留完整的发布目录；不要只分发可执行文件。
 
-KKS, Koikatsu Sunshine, BepInEx and XUnity.AutoTranslator are third-party
-projects/products. This project is not an official release of or affiliated
-with their respective maintainers. Game assets and third-party DLLs are not
-bundled with this repository.
+KKS、Koikatsu Sunshine、BepInEx 和 XUnity.AutoTranslator 是第三方项目/产品。
+本项目并不是这些维护者官方发布版本，也不与其有隶属关系。游戏资源和第三方 DLL 不会随本仓库一并打包。
