@@ -1,0 +1,22 @@
+# .NET build artifacts
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+
+# Generated scan data: may contain non-public plugin strings
+Results_TXT/
+**/Results_TXT/
+dist/
+*.nupkg
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Build temp
+*.tmp
+*.bak

@@ -1,0 +1,34 @@
+name: Windows release build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Publish Windows x64 single-file
+        run: dotnet publish src/KksDllStringExtractor/KksDllStringExtractor.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o dist/win-x64
+      - name: Test published executable
+        run: ./dist/win-x64/KKS_DLL_String_Extractor.exe --self-test
+      - name: Verify redistribution notices
+        shell: pwsh
+        run: |
+          $notices = @('LICENSE', 'THIRD_PARTY_NOTICES.md', 'licenses/Mono.Cecil-LICENSE.txt', 'licenses/dotnet-LICENSE.txt', 'licenses/dotnet-THIRD-PARTY-NOTICES.txt')
+          foreach ($notice in $notices) {
+            $file = Get-Item -LiteralPath (Join-Path 'dist/win-x64' $notice) -ErrorAction Stop
+            if ($file.Length -eq 0) { throw "Empty notice: $notice" }
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KKS-DLL-String-Extractor-win-x64
+          path: dist/win-x64/

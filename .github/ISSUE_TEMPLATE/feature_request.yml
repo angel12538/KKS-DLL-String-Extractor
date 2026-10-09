@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest improvements
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Suggested behavior
+      description: Please preserve the existing exact-string TXT contract unless proposing a breaking change.

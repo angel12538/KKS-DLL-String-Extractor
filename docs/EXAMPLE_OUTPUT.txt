@@ -1,0 +1,8 @@
+// KKS_HLightControl.dll / KKS_HLightControl
+General=
+Shadow resolution target=
+What resolution to apply when clicking 'Lower shadow resolution'=
+
+// KKS_MakerSearch.dll / Tools
+Search=
+Reset=

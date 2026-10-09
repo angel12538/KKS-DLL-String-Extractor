@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>KKS_DLL_String_Extractor</AssemblyName>
+    <Version>2.6.1</Version>
+    <Authors>KKS DLL String Extractor Contributors</Authors>
+    <Description>Static multilingual string extraction for KKS BepInEx plugin DLLs.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Mono.Cecil" Version="0.11.5" />
+    <Content Include="../../LICENSE;../../THIRD_PARTY_NOTICES.md">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Content Include="../../licenses/Mono.Cecil-LICENSE.txt">
+      <Link>licenses/Mono.Cecil-LICENSE.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+  </ItemGroup>
+  <Target Name="IncludeRuntimeLicenseNotices" AfterTargets="ComputeFilesToPublish" Condition="'$(SelfContained)' == 'true'">
+    <ItemGroup>
+      <_DotNetRuntimePack Include="@(ResolvedRuntimePack)" Condition="'%(Identity)' == 'Microsoft.NETCore.App.Runtime.$(RuntimeIdentifier)'" />
+      <_RuntimeNotice Include="%(_DotNetRuntimePack.PackageDirectory)/LICENSE.TXT" Condition="'@(_DotNetRuntimePack)' != ''">
+        <NoticePath>licenses/dotnet-LICENSE.txt</NoticePath>
+      </_RuntimeNotice>
+      <_RuntimeNotice Include="%(_DotNetRuntimePack.PackageDirectory)/THIRD-PARTY-NOTICES.TXT" Condition="'@(_DotNetRuntimePack)' != ''">
+        <NoticePath>licenses/dotnet-THIRD-PARTY-NOTICES.txt</NoticePath>
+      </_RuntimeNotice>
+    </ItemGroup>
+    <Error Condition="'@(_DotNetRuntimePack)' == ''" Text="Cannot locate the resolved .NET runtime package for license notices." />
+    <Error Condition="!Exists('%(_RuntimeNotice.Identity)')" Text="Missing runtime license notice: %(_RuntimeNotice.Identity)" />
+    <ItemGroup>
+      <ResolvedFileToPublish Include="@(_RuntimeNotice)">
+        <RelativePath>%(_RuntimeNotice.NoticePath)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+</Project>

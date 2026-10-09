@@ -1,0 +1,29 @@
+name: Bug report
+description: Report extraction, format, or build bugs
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: textarea
+    id: issue
+    attributes:
+      label: What happened?
+      description: Please do not upload copyrighted DLL files or private data.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Include tool version, steps, expected output and actual output.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Windows 11 / .NET 8 / KKS + HF Patch
+  - type: textarea
+    id: log
+    attributes:
+      label: Redacted error log
+      render: text
