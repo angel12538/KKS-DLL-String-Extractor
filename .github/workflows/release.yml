@@ -28,7 +28,7 @@ jobs:
             $file = Get-Item -LiteralPath (Join-Path 'dist/win-x64' $notice) -ErrorAction Stop
             if ($file.Length -eq 0) { throw "Empty notice: $notice" }
           }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: KKS-DLL-String-Extractor-win-x64
           path: dist/win-x64/
