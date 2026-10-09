@@ -1,6 +1,6 @@
 # 第三方依赖
 
-本项目通过 NuGet 依赖 [Mono.Cecil 0.11.5](https://github.com/jbevain/cecil/tree/0.11.5)。版权归 Jb Evain（2008 - 2015）和 Novell, Inc.（2008 - 2011）所有。
+本项目通过 NuGet 依赖 [Mono.Cecil 0.11.6](https://github.com/jbevain/cecil/tree/0.11.6)。版权归 Jb Evain（2008 - 2015）和 Novell, Inc.（2008 - 2011）所有。
 其完整的 MIT/X11 许可证已包含在 [licenses/Mono.Cecil-LICENSE.txt](licenses/Mono.Cecil-LICENSE.txt) 中。
 项目许可证、此声明以及 Mono.Cecil 许可证都会复制到所有构建和发布输出中，作为外部文件，包括单文件构建。
 
