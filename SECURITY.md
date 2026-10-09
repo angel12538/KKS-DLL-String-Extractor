@@ -1,13 +1,9 @@
-# Security policy
+# 安全策略
 
-The extractor operates on untrusted third-party DLL files. Its intent is to
-inspect metadata/IL and embedded resources without executing those DLLs.
-Do not use this tool as a malware scanner or assume arbitrary files are safe.
-Run it with normal user privileges, preferably on a copy of a plugin folder.
+该提取器会处理不受信任的第三方 DLL 文件。它的目的是检查元数据/IL 和嵌入式资源，而不是执行这些 DLL。
+请不要将此工具当作恶意软件扫描器，也不要假设任意文件都是安全的。
+请以普通用户权限运行此工具，最好在插件目录的副本上执行。
 
-Please report security concerns privately to the repository maintainer using
-the GitHub security advisory feature, if enabled. Do not include proprietary
-or private DLL contents in public reports.
+请通过 GitHub 安全公告功能（如果已启用）私下向仓库维护者报告安全问题。不要在公开报告中包含专有或私有 DLL 内容。
 
-Security fixes are not guaranteed for unmaintained releases. Update Mono.Cecil
-and the .NET runtime as upstream patches become available.
+对于未维护的版本，不保证会修复安全问题。随着上游补丁的发布，请及时更新 Mono.Cecil 和 .NET。
