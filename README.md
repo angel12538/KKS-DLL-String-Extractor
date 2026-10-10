@@ -1,92 +1,128 @@
 # KKS DLL String Extractor
 
-[简体中文说明](README.zh-CN.md) · [Output format](docs/OUTPUT_FORMAT.md) · [Contributing](CONTRIBUTING.md)
+[简体中文](README.zh-CN.md) · [Output format](docs/OUTPUT_FORMAT.md) · [Development](docs/DEVELOPMENT.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
-A static, **multilingual** string extractor for **Koikatsu Sunshine (KKS)** BepInEx plugin DLLs, built with .NET 8 and Mono.Cecil. It does not run or modify scanned DLLs. Its purpose is to help translators locate text, not to inject translations into the game.
+A static, multilingual string extractor for **Koikatsu Sunshine (KKS) BepInEx plugin DLLs**, built with .NET 8 and Mono.Cecil. It analyzes managed assemblies without intentionally executing or modifying scanned DLLs. It helps translators discover text; it is **not** a translation injector or a DLL patcher.
 
-> Unofficial community tool. Not affiliated with Illusion, BepInEx or XUnity.AutoTranslator.
+> Unofficial community tool. Not affiliated with Illusion, BepInEx, or XUnity.AutoTranslator.
 
 ## Features
 
-- Recursive DLL scan; IL `ldstr` and selected embedded text/resources.
-- Full original-string output, plus heuristic translatable/UI subsets.
-- Multi-script: Latin, Kana, Han, Hangul, Cyrillic, Arabic, etc. No Japanese-only filter.
-- Deduplication: globally for combined TXT, and separately for each DLL.
-- Plain `.txt` with `// DLL / Class` headings and `Original=` lines.
-- Exact archive for multiline, escaped and other ambiguous originals.
-- Stable special-string IDs across every export; strict UTF-8 / BOM-marked UTF-16 decoding.
-- Text and `.resources` payloads limited to 32,000,000 bytes before reading; unrelated binary resources skipped.
-- Directory errors are logged while accessible siblings continue; directory links are skipped.
+- Recursively scans plugin directories for managed DLLs.
+- Extracts IL `ldstr` strings and selected embedded text/resources.
+- Preserves multiple writing systems, including Latin, Kana, Han, Hangul, Cyrillic, and Arabic; it is not Japanese-only.
+- Exports all extracted originals and heuristic multilingual, UI, and configuration-related candidates.
+- Deduplicates the combined output globally and deduplicates each per-DLL output independently.
+- Uses plain TXT files with `// DLL / Class` headings and original strings as keys.
+- Preserves ambiguous strings losslessly in a separate archive, including strings with newlines or escape-sensitive characters.
+- Keeps special-string IDs stable across global, UI, and per-plugin exports.
+- Strictly decodes UTF-8 and BOM-marked UTF-16; limits text and .resources payloads to 32,000,000 bytes before reading.
+- Logs directory-access errors while continuing through accessible directories, and skips directory links to avoid recursive loops.
 
-## Quick start (Windows)
+## Download
 
-**Prebuilt release (Windows x64):** Download and fully extract the release ZIP. No .NET installation is required. Double-click `KKS_DLL_String_Extractor.exe`, enter or drag in your `BepInEx\plugins` folder, and press Enter. Leave the output prompt blank to create a new `Results_TXT/scan_<timestamp>_<id>/` folder beside the EXE. Results and errors remain visible until you press Enter to close the window. Command-line scans and diagnostic flags do not pause.
+Visit [GitHub Releases](https://github.com/angel12538/KKS-DLL-String-Extractor/releases) and download the ZIP for your platform:
 
-**Build from source:**
+- **Windows x64:** `KKS-DLL-String-Extractor-win-x64.zip`
+- **Linux x64:** `KKS-DLL-String-Extractor-linux-x64.zip`
 
-**Requirements:** Windows 10/11 and the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). Internet is required on first build to restore `Mono.Cecil` through NuGet.
+The GitHub Actions workflow builds and self-tests both platforms on every branch push. When both jobs pass, it publishes a GitHub **pre-release** with both ZIPs attached. These continuous builds may contain work in progress and are not stable, versioned releases. Each run uses a unique `build-...` tag. Actions artifacts are retained for 14 days; release assets remain until the release is deleted.
 
-1. Clone or download this repository.
-2. Double-click `scripts/Run_SelfTest.bat` to run self-tests.
-3. Double-click `scripts/Run_Scan.bat` and enter your KKS `BepInEx\plugins` folder.
-4. Find files under `Results_TXT/scan_<timestamp>/`.
+Both packages include the .NET runtime, so a separate .NET Runtime installation is not required. Linux builds still depend on compatible system libraries provided by the distribution.
 
-Or run from a terminal:
+## Quick start: Windows x64
 
-```powershell
-dotnet run --project src/KksDllStringExtractor -- "D:\Games\KoikatsuSunshine\BepInEx\plugins" "D:\KKS-Output-New"
-```
+1. Download and fully extract the Windows ZIP. Keep the license and notice files with the executable.
+2. Double-click `KKS_DLL_String_Extractor.exe`.
+3. Enter or drag in your KKS `BepInEx\\plugins` directory, then press Enter.
+4. Leave the output prompt blank to create a new `Results_TXT/scan_<timestamp>_<id>/` folder beside the executable, or specify a new or empty output directory.
+5. Read the result or error message and press Enter to close the window. Press Enter at the first directory prompt to cancel.
 
-The output directory must be new or empty; the program intentionally refuses to overwrite your edited translations.
+Command-line scans and diagnostic options such as `--self-test`, `--help`, and `--version` do not pause, so they can be used in scripts and CI. The publish output also includes `README-win-x64.txt`.
 
-## Example output
+## Quick start: Linux x64
 
-```ini
-// KKS_HLightControl.dll / KKS_HLightControl
-General=
-Shadow resolution target=
-What resolution to apply when clicking 'Lower shadow resolution'=
+1. Download and extract the Linux ZIP.
+2. Open a terminal in the extracted directory. If needed, make the executable runnable:
 
-// KKS_MakerSearch.dll / Tools
-Search=
-Reset=
-```
+    chmod +x KKS_DLL_String_Extractor
 
-Files: `AllStrings.txt`, `Translatable_AllLanguages.txt`, `UIStrings.txt`, `UI_HighConfidence.txt`, `SpecialStrings_Exact.txt`, `ByPlugin/`, `ByPlugin_UI/`, `ByPlugin_Special/`, `ScanSummary.txt`, `Errors.txt` and `Readme_重要说明.txt`.
+3. Run a scan by providing the plugin directory and a new or empty output directory:
 
-## Build a Windows executable
+    ./KKS_DLL_String_Extractor "/path/to/BepInEx/plugins" "/path/to/KKS-Output"
 
-Run `scripts/Build_Windows_EXE.bat`, or:
+4. Run the built-in self-test when needed:
 
-```powershell
-dotnet publish src/KksDllStringExtractor -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o dist/win-x64
-```
+    ./KKS_DLL_String_Extractor --self-test
 
-The `Windows release build` GitHub Actions workflow also uploads a Windows x64 build artifact; it does **not** publish a GitHub Release automatically.
-The workflow tests the published EXE and verifies its license notices. Distribute the
-complete publish folder (EXE, `LICENSE`, `THIRD_PARTY_NOTICES.md`, and `licenses/`),
-keeping all notices with the executable.
+The output directory must be new or empty. The program refuses to overwrite existing files so that edited translation work is not silently replaced. Linux is built and self-tested on a GitHub-hosted Ubuntu runner; compatibility with every Linux distribution and every game/plugin setup is not guaranteed.
 
-## Relationship with XUnity.AutoTranslator
+## Build from source
 
-Strings that are visible in the plugin's runtime UI may be translated with XUnity if that text framework is intercepted. Merely inserting `Original=Translation` into a TXT file does not guarantee the plugin displays a translation. No runtime hooking or DLL rewriting is included.
+Requirements: the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). The first build needs internet access to restore Mono.Cecil from NuGet.
 
-See [output format and special string notes](docs/OUTPUT_FORMAT.md). If you find false-positive UI candidates, please open an issue with a redacted example rather than uploading proprietary DLLs.
+On Windows, run the existing self-test:
 
-## Safety and accuracy
+    scripts\Run_SelfTest.bat
 
-The scanner opens untrusted plugin files for parsing but does not intentionally execute them. Treat DLL files as untrusted and scan with normal user privileges. UI selection is heuristic; strings may be missed, and technical identifiers can be mistaken for UI text.
+On Windows, launch the interactive scanner:
 
-## Build verification
+    scripts\Run_Scan.bat
 
-Version 2.6.2 was verified on Windows with .NET SDK 8.0.425: Release build,
-built-in regression tests, and self-contained win-x64 single-file publish.
-Interactive startup, completion/error pauses, cancellation and noninteractive
-CLI use were also tested against the published EXE as separate processes.
-Self-tests generate artificial managed DLLs and run their extraction even in the
-single-file EXE; no game DLLs are needed or executed. Linux execution and actual
-KKS plugin compatibility still need CI/user validation.
+Or scan directly from a terminal on Windows or Linux:
+
+    dotnet run --project src/KksDllStringExtractor -- "/path/to/BepInEx/plugins" "/path/to/KKS-Output"
+
+Publish a self-contained single-file Windows x64 build:
+
+    dotnet publish src/KksDllStringExtractor/KksDllStringExtractor.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o dist/win-x64
+
+Publish a self-contained single-file Linux x64 build:
+
+    dotnet publish src/KksDllStringExtractor/KksDllStringExtractor.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o dist/linux-x64
+
+When distributing a build, keep the full publish directory, including `LICENSE`, `THIRD_PARTY_NOTICES.md`, and `licenses/`. Do not distribute only the executable.
+
+## Output files
+
+| File or folder | Purpose |
+| --- | --- |
+| `AllStrings.txt` | All extracted originals, globally exact-deduplicated across scanned DLLs |
+| `Translatable_AllLanguages.txt` | Multilingual translation candidates |
+| `UIStrings.txt` | Heuristic UI-text candidates |
+| `UI_HighConfidence.txt` | Higher-confidence UI/configuration-related candidates |
+| `ByPlugin/` | All strings grouped by DLL, deduplicated independently per DLL |
+| `ByPlugin_UI/` | UI candidates grouped by DLL |
+| `SpecialStrings_Exact.txt` | Lossless Base64 archive of ambiguous originals, encoded from raw UTF-16LE code units |
+| `ByPlugin_Special/` | Special-string archives grouped by DLL |
+| `ScanSummary.txt`, `Errors.txt` | Scan summary and diagnostics |
+| `Readme_重要说明.txt` | Notes about interpreting generated files |
+
+Example:
+
+    // KKS_HLightControl.dll / KKS_HLightControl
+    General=
+    Shadow resolution target=
+    What resolution to apply when clicking 'Lower shadow resolution'=
+
+    // KKS_MakerSearch.dll / Tools
+    Search=
+    Reset=
+
+## Special strings and XUnity.AutoTranslator
+
+Ordinary single-line originals are written as source keys followed by `=`. Strings containing `=`, backslashes, leading/trailing whitespace, control characters, newlines, or comment-like prefixes can be ambiguous in a simple TXT format. Such entries are marked in the normal TXT output and preserved losslessly in `SpecialStrings_Exact.txt` and `ByPlugin_Special/` as Base64-encoded raw UTF-16LE code units.
+
+**The Base64 value is not a translation key.** This tool only extracts text. XUnity.AutoTranslator may translate text it actually intercepts at runtime, but a string found in a DLL is not necessarily displayed in the UI or intercepted by XUnity. Adding `Original=Translation` lines to a TXT file does not guarantee an in-game translation. See [output format and special-string notes](docs/OUTPUT_FORMAT.md).
+
+## Safety and limitations
+
+- Treat input DLLs as untrusted and run the scanner with normal user privileges. The tool parses files and does not intentionally execute them, but parsing untrusted files is not risk-free.
+- UI/configuration classification is heuristic. It can miss visible text or classify technical identifiers as UI candidates.
+- Dynamically generated strings, encrypted or obfuscated data, and some serialized resources may not be available to static extraction.
+- The tool does not modify game plugins, inject translations, or rewrite DLLs.
+- When reporting a false positive, share a redacted example rather than uploading proprietary game or plugin DLLs.
 
 ## License
 
-MIT (see [LICENSE](LICENSE)). Mono.Cecil and other third-party projects are independently maintained; see [third-party notices](THIRD_PARTY_NOTICES.md).
+MIT; see [LICENSE](LICENSE). Mono.Cecil and other third-party projects are independently maintained; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the `licenses/` folder.
