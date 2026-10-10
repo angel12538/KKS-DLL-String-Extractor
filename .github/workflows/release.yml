@@ -124,64 +124,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  promote-release:
-    name: Promote Continuous build 14 to formal release
-    if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[promote-build14-to-stable]') }}
-    runs-on: ubuntu-latest
-    needs:
-      - build-windows
-      - build-linux
-    permissions:
-      contents: write
-    steps:
-      - name: Mark release as formal and publish release notes
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat > release-notes.md <<'EOF'
-          # KKS DLL String Extractor — Build 14
-          
-          **正式发布 / Official Release — Windows x64 and Linux x64**
-          
-          本次发布将自动构建的 Windows 与 Linux x64 独立运行包作为正式 GitHub Release 发布。此次是自动构建包的正式发布，不代表新增了未验证的提取功能。
-          
-          ## 下载 / Downloads
-          
-          - **Windows x64:** [KKS-DLL-String-Extractor-win-x64.zip](https://github.com/angel12538/KKS-DLL-String-Extractor/releases/download/build-38035559193-1/KKS-DLL-String-Extractor-win-x64.zip)
-          - **Linux x64:** [KKS-DLL-String-Extractor-linux-x64.zip](https://github.com/angel12538/KKS-DLL-String-Extractor/releases/download/build-38035559193-1/KKS-DLL-String-Extractor-linux-x64.zip)
-          
-          ## 本次发布 / What's included
-          
-          - Windows x64 与 Linux x64 自包含单文件构建（包含 .NET 运行时，无需单独安装 .NET 8）。
-          - 两个平台的发布程序均已通过 GitHub Actions 中的内置 `--self-test`。
-          - 发布包包含项目许可证、第三方声明、Mono.Cecil 许可证及 .NET 运行时相关许可证文件。
-          - 提供中英文项目说明及跨平台自动构建/发布流程。
-          
-          ## 使用方法 / Usage
-          
-          **Windows:** 下载并解压 ZIP，然后运行 `KKS_DLL_String_Extractor.exe`。
-          
-          **Linux:** 解压 ZIP，运行 `chmod +x KKS_DLL_String_Extractor`，然后执行 `./KKS_DLL_String_Extractor`。
-          
-          将程序指向需要扫描的插件目录，并按程序提示指定或确认输出目录。请保留发布包中的许可证文件和 `licenses` 目录。
-          
-          ## 版本说明 / Version note
-          
-          `build-38035559193-1` 是 CI 自动构建标签，不是语义化版本号（例如 `v2.6.3`）。此条目现作为正式 GitHub Release 发布。
-          
-          This release provides self-contained Windows x64 and Linux x64 packages. Both builds passed the workflow's built-in self-test. The build tag identifies this CI run and is not a semantic version number.
-          EOF
-          
-          gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/408782130" \
-            -F prerelease=false \
-            -f make_latest=true \
-            -f name="KKS DLL 文本提取工具 — Windows/Linux x64 正式版 (Build 14)" \
-            -f body="$(cat release-notes.md)"
-  
   release:
-    if: ${{ ! (github.event_name == 'push' && contains(github.event.head_commit.message, '[promote-build14-to-stable]')) }}
     name: Package and publish Release
     runs-on: ubuntu-latest
     needs:
