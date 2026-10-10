@@ -1,54 +1,122 @@
 # KKS DLL String Extractor · KKS 插件 DLL 文本提取器
 
-[English](README.md) · [输出格式细节](docs/OUTPUT_FORMAT.md) · [贡献指南](CONTRIBUTING.md)
+[English](README.md) · [输出格式细节](docs/OUTPUT_FORMAT.md) · [贡献指南](CONTRIBUTING.md) · [版本记录](CHANGELOG.md)
 
-用于《恋活 Sunshine》（KKS）及 HF Patch 环境的 **BepInEx 插件 DLL 静态文本提取器**。
-基于 **.NET 8 + Mono.Cecil**，不执行、不修改扫描的 DLL，也不附带翻译加载器。
+用于《恋活 Sunshine》（Koikatsu Sunshine，KKS）及相关 HF Patch 环境的 **BepInEx 插件 DLL 静态文本提取工具**。基于 **.NET 8 + Mono.Cecil**，读取托管程序集中的字符串，不会主动执行或修改被扫描的 DLL。它用于帮助整理翻译候选，**不是翻译注入器，也不会改写 DLL**。
 
-> 非官方社区工具，与游戏开发商、BepInEx 及 XUnity.AutoTranslator 无官方关联。
+> 非官方社区工具，与 Illusion、BepInEx 及 XUnity.AutoTranslator 均无官方关联。
 
 ## 功能
 
-- 批量递归读取 `BepInEx/plugins` 下的托管 DLL。
-- 提取 IL `ldstr` 字符串和部分内嵌资源文字。
-- **所有语言**都保留：日文、英文、中文、韩文、俄文及其他文字系统。
-- UI/配置项启发式识别，尽量排除 Unity 对象路径及技术标识符。
-- 全局汇总**跨 DLL 精确去重**；按插件 TXT 则**每个 DLL 独立去重**。
-- 只生成 TXT；分组 `// DLL / 类名`，原文行 `原文=`。
-- 有换行、反斜杠、等号等特殊情况时，用独立档案无损保留，不伪造可匹配键。
-- 特殊原文编号在所有导出文件中保持一致；UTF-8、带 BOM 的 UTF-16 均严格解码，异常编码记录错误。
-- 文本与 `.resources` 资源在读取前限制为 32,000,000 字节，其他二进制资源直接跳过。
-- 子目录访问失败时记录错误并继续扫描其他目录；跳过目录联接和符号链接，防止循环扫描。
+- 递归扫描插件目录中的托管 DLL。
+- 提取 IL `ldstr` 字符串及部分内嵌文本/资源。
+- 保留多种文字系统，包括日文、英文、中文、韩文、俄文、阿拉伯文等，不限于日文。
+- 同时导出全部原文，以及通过启发式规则识别的翻译候选和 UI/配置文本候选。
+- 汇总 TXT 在所有 DLL 之间进行全局精确去重；按 DLL 导出时各自独立去重。
+- 使用纯 TXT 格式，以 `// DLL / 类名` 分组，并将原文作为待翻译键。
+- 对换行、转义字符等可能产生歧义的特殊原文进行无损存档。
+- 特殊字符串 ID 在全局、UI 和按插件导出文件中保持一致；严格解码 UTF-8 和带 BOM 的 UTF-16。
+- 文本与 `.resources` 资源在读取前限制为 32,000,000 字节，并跳过无关二进制资源。
+- 子目录访问失败时记录错误并继续扫描可访问的其他目录；跳过目录联接和符号链接，避免循环扫描。
 
-## Windows 使用
+## 下载与自动构建
 
-### 直接使用发行版（Windows x64）
+打开 [GitHub Releases 页面](https://github.com/angel12538/KKS-DLL-String-Extractor/releases)，按平台下载对应 ZIP：
 
-1. 下载并完整解压发行版 ZIP，无需安装 .NET。
-2. 双击 `KKS_DLL_String_Extractor.exe`，输入或拖入 `BepInEx\plugins` 文件夹，然后按 Enter。
-3. 输出目录留空，会在程序目录下自动创建新的 `Results_TXT/scan_日期时间_随机编号/`；也可以指定一个不存在或为空的目录。
-4. 扫描完成或报错后窗口会保留，查看提示后按 Enter 关闭。第一个目录提示处直接按 Enter 可取消。
+- `KKS-DLL-String-Extractor-win-x64.zip` —— Windows x64。
+- `KKS-DLL-String-Extractor-linux-x64.zip` —— Linux x64。
 
-命令行扫描及 `--self-test`、`--help`、`--version` 不暂停，方便脚本和 CI 使用。
-详细步骤见发行包中的 `README-win-x64.txt`。
+GitHub Actions 工作流会在**每次推送分支代码**时构建并自测 Windows x64 和 Linux x64。两个平台都通过后，会自动创建一个**预发布版本（Pre-release）**，并附上两个 ZIP。持续构建可能包含开发中的改动，不等同于稳定正式版；每次运行都会使用唯一的 `build-...` 标签。Actions 临时构建产物保留 14 天，Release 附件会一直保留，直到对应 Release 被删除。
 
-### 从源码运行
+两个包都包含自包含的 .NET 运行时，因此无需另行安装 .NET Runtime。Linux 版本仍需要发行版提供兼容的系统库。
 
-1. 安装 [Microsoft .NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)；首次构建需要联网下载 Mono.Cecil。
-2. 下载仓库 ZIP 并解压，或者使用 `git clone`。
-3. 运行 `scripts/Run_SelfTest.bat` 进行自测。
-4. 运行 `scripts/Run_Scan.bat`，输入 KKS 的 `BepInEx\plugins` 路径。
-5. 结果位于 `Results_TXT/scan_日期时间/`，不会覆盖此前的结果。
+## 快速开始：Windows x64
 
-也可以命令行扫描：
+1. 下载并完整解压 `KKS-DLL-String-Extractor-win-x64.zip`。请将许可证和第三方声明文件与 EXE 一起保留。
+2. 双击 `KKS_DLL_String_Extractor.exe`。
+3. 输入或拖入 KKS 的 `BepInEx\plugins` 目录，然后按 Enter。
+4. 输出目录留空时，会在 EXE 所在目录旁创建新的 `Results_TXT/scan_<timestamp>_<id>/` 文件夹；也可以指定一个不存在或为空的目录。
+5. 扫描完成或发生错误后，先查看提示，再按 Enter 关闭窗口。在第一个目录提示处直接按 Enter 可取消。
 
-```powershell
-dotnet run --project src/KksDllStringExtractor -- "D:\Games\KoikatsuSunshine\BepInEx\plugins" "D:\New-KKS-Results"
+命令行扫描，以及 `--self-test`、`--help`、`--version` 等诊断选项不会暂停，适合脚本和 CI 使用。发布目录内的 `README-win-x64.txt` 也包含 Windows 使用说明。
+
+## 快速开始：Linux x64
+
+1. 下载并解压 `KKS-DLL-String-Extractor-linux-x64.zip`。
+2. 在解压目录打开终端；必要时为程序添加执行权限：
+
+   ```bash
+   chmod +x KKS_DLL_String_Extractor
+   ```
+
+3. 传入插件目录和一个全新或空的输出目录，开始扫描：
+
+   ```bash
+   ./KKS_DLL_String_Extractor "/path/to/BepInEx/plugins" "/path/to/KKS-Output"
+   ```
+
+4. 单独运行内置自测：
+
+   ```bash
+   ./KKS_DLL_String_Extractor --self-test
+   ```
+
+输出目录必须不存在或为空。程序会拒绝覆盖已有文件，避免误删或覆盖人工编辑的翻译。Linux 构建和自测在 GitHub 托管的 Ubuntu Runner 上进行，但这不代表已验证所有 Linux 发行版或所有游戏/插件环境。
+
+## 从源码运行与编译
+
+需要安装 [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)。首次构建需要联网从 NuGet 还原 `Mono.Cecil`。
+
+Windows 下运行现有自测脚本：
+
+```bat
+scripts\Run_SelfTest.bat
 ```
 
-**输出目录必须不存在或为空**，以免覆盖人工修改过的翻译文件。
+Windows 下运行交互式扫描脚本：
 
-### 输出样式
+```bat
+scripts\Run_Scan.bat
+```
+
+也可以在 Windows 或 Linux 终端中直接调用：
+
+```text
+dotnet run --project src/KksDllStringExtractor -- "/path/to/BepInEx/plugins" "/path/to/KKS-Output"
+```
+
+编译 Windows x64 自包含单文件程序：
+
+```powershell
+dotnet publish src/KksDllStringExtractor/KksDllStringExtractor.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o dist/win-x64
+```
+
+编译 Linux x64 自包含单文件程序：
+
+```bash
+dotnet publish src/KksDllStringExtractor/KksDllStringExtractor.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o dist/linux-x64
+```
+
+分发时请保留整个发布目录，包括 `LICENSE`、`THIRD_PARTY_NOTICES.md` 和 `licenses/`，不可只复制可执行文件。
+
+## 输出文件
+
+通常会生成以下文件和目录（若没有匹配项，部分文件可能为空）：
+
+| 文件或目录 | 用途 |
+|---|---|
+| `AllStrings.txt` | 提取到的全部原文，跨 DLL 全局精确去重 |
+| `Translatable_AllLanguages.txt` | 多语言翻译候选 |
+| `UIStrings.txt` | 启发式识别的 UI 文本候选 |
+| `UI_HighConfidence.txt` | 置信度较高的 UI/配置相关候选 |
+| `ByPlugin/` | 按 DLL 分组的全部文本，每个 DLL 单独去重 |
+| `ByPlugin_UI/` | 按 DLL 分组的 UI 候选 |
+| `SpecialStrings_Exact.txt` | 特殊原文的 UTF-16LE Base64 无损存档 |
+| `ByPlugin_Special/` | 按 DLL 分组的特殊原文存档 |
+| `ScanSummary.txt`、`Errors.txt` | 扫描汇总与诊断信息 |
+| `Readme_重要说明.txt` | 生成文件的阅读说明 |
+
+输出示例：
 
 ```ini
 // KKS_HLightControl.dll / KKS_HLightControl
@@ -61,47 +129,29 @@ Search=
 Reset=
 ```
 
-### 输出文件
+## 特殊原文与输出格式
 
-| 文件 | 用途 |
-|---|---|
-| `AllStrings.txt` | 所有提取到的原文，全局精确去重 |
-| `Translatable_AllLanguages.txt` | 多语言翻译候选 |
-| `UIStrings.txt` | 疑似 UI 文字 |
-| `UI_HighConfidence.txt` | 高置信度 UI/配置 API 关联文字 |
-| `ByPlugin/` | 每个 DLL 单独的全部文本 |
-| `ByPlugin_UI/` | 每个 DLL 单独的 UI 候选 |
-| `SpecialStrings_Exact.txt` | 特殊原文的无损 UTF-16LE Base64 存档 |
-| `ByPlugin_Special/` | 特殊原文按 DLL 分档 |
-| `ScanSummary.txt`、`Errors.txt` | 扫描统计和错误 |
+普通单行原文会以“原文=`”的形式输出。包含 `=`、反斜杠、首尾空白、控制字符、真实换行或类似注释前缀的字符串，可能无法在简单 TXT 格式中无歧义表示。此类内容会在普通 TXT 中标记为特殊项，并以原始 UTF-16LE 代码单元的 Base64 形式无损保存到 `SpecialStrings_Exact.txt` 和 `ByPlugin_Special/`。
 
-### 特殊原文
+**Base64 内容不是可直接用于翻译的键。** 实际游戏翻译请以 XUnity.AutoTranslator 运行时捕获到的键为准，并遵循它支持的格式。详见[输出格式与特殊字符串说明](docs/OUTPUT_FORMAT.md)。
 
-普通单行字符串不转义，可以在 `原文=` 后填写翻译；但 `=`、反斜杠、真实换行、注释前缀或前后空格可能导致 TXT 解析歧义。程序把这些内容作为 `[SPECIAL]` 标记并以 UTF-16LE Base64 无损保存在档案中。**Base64 不是翻译键**，应参考 XUnity 实际捕获的原文和转义规则手工处理。
+## 与 XUnity.AutoTranslator 的关系
 
-### 与 XUnity.AutoTranslator 配合
+本工具只负责提取文本。XUnity.AutoTranslator 只能翻译运行时实际捕获到的文本；DLL 中存在的字符串不一定显示在 UI，也不保证会被 XUnity 拦截。仅将 `原文=译文` 写入 TXT 并不能保证游戏内翻译生效。本项目不包含运行时 Hook、翻译注入或 DLL 改写功能。
 
-本工具只提取。你可以使用已有 XUnity.AutoTranslator 将真正被拦截到的游戏 UI 文本翻译；但 DLL 中的静态字符串不一定会出现在 UI 中，也不保证全部能被 XUnity 捕获。不能单靠把导出 TXT 放进游戏目录就保证翻译生效。
+## 安全性与限制
 
-## 编译 Windows EXE
+- 请将输入 DLL 视为不可信文件，并以普通用户权限运行扫描器。程序不会主动执行 DLL，但解析不可信文件仍存在风险。
+- UI/配置项分类基于启发式规则，可能漏掉可见文本，也可能把技术标识符归类为 UI 候选。
+- 运行时生成、加密或混淆的字符串，以及部分序列化资源，可能无法通过静态分析提取。
+- 资源中的文本可能会与完整资源文档分开输出。
+- 报告误判时，请提供脱敏示例，不要上传专有游戏资源或插件 DLL。
 
-双击 `scripts/Build_Windows_EXE.bat`，或者执行：
+## 开发与许可证
 
-```powershell
-dotnet publish src/KksDllStringExtractor -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o dist/win-x64
-```
+- [开发说明](docs/DEVELOPMENT.md)
+- [贡献指南](CONTRIBUTING.md)
+- [版本记录](CHANGELOG.md)
+- [MIT 许可证](LICENSE) 与[第三方声明](THIRD_PARTY_NOTICES.md)
 
-GitHub Actions 自动构建 Windows 和 Linux，并可产出 Windows x64 构建产物；发布 Release 需要项目维护者自行完成。
-发布流程会运行构建后的 EXE 自测并检查许可证文件。分发时请保留整个发布目录，
-包括 EXE、`LICENSE`、`THIRD_PARTY_NOTICES.md` 和 `licenses/`，不要只复制 EXE。
-
-## 开发与参与
-
-- 架构说明：[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
-- 贡献指南：[CONTRIBUTING.md](CONTRIBUTING.md)
-- 版本记录：[CHANGELOG.md](CHANGELOG.md)
-- 开源许可证：[MIT](LICENSE)
-
-**隐私提醒：** 不要把扫描生成的 TXT、HF Patch 插件 DLL、游戏资源或私人日志提交到 GitHub。本仓库默认通过 `.gitignore` 忽略 `Results_TXT/` 和构建目录。
-
-**验证说明：** v2.6.2 已在 Windows / .NET SDK 8.0.425 下验证 Release 构建、自带回归测试和 win-x64 自包含单文件发布。已针对发布后的 EXE 验证无参数启动、中文路径输入、完成/报错后暂停、取消和命令行兼容性。自测会生成合成 DLL 并静态扫描，单文件 EXE 也执行同样的集成测试，不依赖或执行游戏 DLL。Linux 实际运行和真实 KKS 插件兼容性仍需 CI 或用户验证。
+请勿将 `Results_TXT/` 生成结果、专有游戏资源、插件 DLL 或私人日志提交到仓库。
