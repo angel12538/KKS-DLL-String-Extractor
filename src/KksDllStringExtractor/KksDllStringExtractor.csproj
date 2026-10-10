@@ -5,13 +5,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>KKS_DLL_String_Extractor</AssemblyName>
-    <Version>2.6.1</Version>
+    <Version>2.6.2</Version>
     <Authors>KKS DLL String Extractor Contributors</Authors>
     <Description>Static multilingual string extraction for KKS BepInEx plugin DLLs.</Description>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Mono.Cecil" Version="0.11.6" />
-    <Content Include="../../LICENSE;../../THIRD_PARTY_NOTICES.md">
+    <Content Include="../../LICENSE;../../THIRD_PARTY_NOTICES.md;../../README-win-x64.txt">
       <Link>%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>

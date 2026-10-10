@@ -19,8 +19,20 @@
 - 特殊原文编号在所有导出文件中保持一致；UTF-8、带 BOM 的 UTF-16 均严格解码，异常编码记录错误。
 - 文本与 `.resources` 资源在读取前限制为 32,000,000 字节，其他二进制资源直接跳过。
 - 子目录访问失败时记录错误并继续扫描其他目录；跳过目录联接和符号链接，防止循环扫描。
-  
+
 ## Windows 使用
+
+### 直接使用发行版（Windows x64）
+
+1. 下载并完整解压发行版 ZIP，无需安装 .NET。
+2. 双击 `KKS_DLL_String_Extractor.exe`，输入或拖入 `BepInEx\plugins` 文件夹，然后按 Enter。
+3. 输出目录留空，会在程序目录下自动创建新的 `Results_TXT/scan_日期时间_随机编号/`；也可以指定一个不存在或为空的目录。
+4. 扫描完成或报错后窗口会保留，查看提示后按 Enter 关闭。第一个目录提示处直接按 Enter 可取消。
+
+命令行扫描及 `--self-test`、`--help`、`--version` 不暂停，方便脚本和 CI 使用。
+详细步骤见发行包中的 `README-win-x64.txt`。
+
+### 从源码运行
 
 1. 安装 [Microsoft .NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)；首次构建需要联网下载 Mono.Cecil。
 2. 下载仓库 ZIP 并解压，或者使用 `git clone`。
@@ -92,4 +104,4 @@ GitHub Actions 自动构建 Windows 和 Linux，并可产出 Windows x64 构建�
 
 **隐私提醒：** 不要把扫描生成的 TXT、HF Patch 插件 DLL、游戏资源或私人日志提交到 GitHub。本仓库默认通过 `.gitignore` 忽略 `Results_TXT/` 和构建目录。
 
-**验证说明：** v2.6.1 已在 Windows / .NET SDK 8.0.425 下验证 Release 构建、自带回归测试和 win-x64 自包含单文件发布。自测会生成合成 DLL 并静态扫描，单文件 EXE 也执行同样的集成测试，不依赖或执行游戏 DLL。Linux 实际运行和真实 KKS 插件兼容性仍需 CI 或用户验证。
+**验证说明：** v2.6.2 已在 Windows / .NET SDK 8.0.425 下验证 Release 构建、自带回归测试和 win-x64 自包含单文件发布。已针对发布后的 EXE 验证无参数启动、中文路径输入、完成/报错后暂停、取消和命令行兼容性。自测会生成合成 DLL 并静态扫描，单文件 EXE 也执行同样的集成测试，不依赖或执行游戏 DLL。Linux 实际运行和真实 KKS 插件兼容性仍需 CI 或用户验证。

@@ -69,6 +69,8 @@ internal static class SelfTests
             if (Directory.Exists(temp)) Directory.Delete(temp, true);
         }
         RegressionTests.Run();
+        ConsoleLaunchTests.Run();
         Console.WriteLine("PASS: UI/path, Unicode, TXT/dedup/archive IDs, resource limits/encoding, directory recovery, managed DLL scan.");
+        Console.WriteLine("PASS: interactive launch, Chinese paths, completion/error pause, cancellation, CLI compatibility, existing-output protection.");
     }
 }

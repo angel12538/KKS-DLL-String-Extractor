@@ -20,6 +20,10 @@ A static, **multilingual** string extractor for **Koikatsu Sunshine (KKS)** BepI
 
 ## Quick start (Windows)
 
+**Prebuilt release (Windows x64):** Download and fully extract the release ZIP. No .NET installation is required. Double-click `KKS_DLL_String_Extractor.exe`, enter or drag in your `BepInEx\plugins` folder, and press Enter. Leave the output prompt blank to create a new `Results_TXT/scan_<timestamp>_<id>/` folder beside the EXE. Results and errors remain visible until you press Enter to close the window. Command-line scans and diagnostic flags do not pause.
+
+**Build from source:**
+
 **Requirements:** Windows 10/11 and the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). Internet is required on first build to restore `Mono.Cecil` through NuGet.
 
 1. Clone or download this repository.
@@ -75,8 +79,10 @@ The scanner opens untrusted plugin files for parsing but does not intentionally 
 
 ## Build verification
 
-Version 2.6.1 was verified on Windows with .NET SDK 8.0.425: Release build,
+Version 2.6.2 was verified on Windows with .NET SDK 8.0.425: Release build,
 built-in regression tests, and self-contained win-x64 single-file publish.
+Interactive startup, completion/error pauses, cancellation and noninteractive
+CLI use were also tested against the published EXE as separate processes.
 Self-tests generate artificial managed DLLs and run their extraction even in the
 single-file EXE; no game DLLs are needed or executed. Linux execution and actual
 KKS plugin compatibility still need CI/user validation.
