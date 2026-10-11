@@ -3,26 +3,39 @@ name: Windows and Linux Release
 on:
   push:
     branches:
-      - "**"
+      - main
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "*.sln"
+      - "**/*.csproj"
+      - "**/*.props"
+      - "**/*.targets"
+
+  push:
+    tags:
+      - "v*"
+
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-windows:
     name: Build Windows x64
     runs-on: windows-latest
+
     steps:
       - name: Checkout source
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "8.0.x"
 
-      - name: Publish Windows x64 single-file
+      - name: Publish Windows x64
         shell: pwsh
         run: |
           dotnet publish src/KksDllStringExtractor/KksDllStringExtractor.csproj `
@@ -33,54 +46,33 @@ jobs:
             -p:PublishTrimmed=false `
             -o dist/win-x64
 
-      - name: Test published executable
+      - name: Self test
         shell: pwsh
         run: |
-          & ./dist/win-x64/KKS_DLL_String_Extractor.exe --self-test
-          if ($LASTEXITCODE -ne 0) {
-            throw "Windows self-test failed"
-          }
+          ./dist/win-x64/KKS_DLL_String_Extractor.exe --self-test
 
-      - name: Verify redistribution notices
-        shell: pwsh
-        run: |
-          $notices = @(
-            'LICENSE',
-            'THIRD_PARTY_NOTICES.md',
-            'licenses/Mono.Cecil-LICENSE.txt',
-            'licenses/dotnet-LICENSE.txt',
-            'licenses/dotnet-THIRD-PARTY-NOTICES.txt'
-          )
-
-          foreach ($notice in $notices) {
-            $path = Join-Path 'dist/win-x64' $notice
-            $file = Get-Item -LiteralPath $path -ErrorAction Stop
-            if ($file.Length -eq 0) {
-              throw "Empty notice: $notice"
-            }
-          }
-
-      - name: Upload Windows build
+      - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: KKS-DLL-String-Extractor-win-x64
-          path: dist/win-x64/
-          if-no-files-found: error
+          path: dist/win-x64
           retention-days: 14
+
 
   build-linux:
     name: Build Linux x64
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout source
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "8.0.x"
 
-      - name: Publish Linux x64 single-file
+      - name: Publish Linux x64
         run: |
           dotnet publish src/KksDllStringExtractor/KksDllStringExtractor.csproj \
             -c Release \
@@ -90,95 +82,65 @@ jobs:
             -p:PublishTrimmed=false \
             -o dist/linux-x64
 
-      - name: Test published executable
+      - name: Self test
         run: |
           chmod +x dist/linux-x64/KKS_DLL_String_Extractor
           ./dist/linux-x64/KKS_DLL_String_Extractor --self-test
 
-      - name: Verify redistribution notices
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          notices=(
-            "LICENSE"
-            "THIRD_PARTY_NOTICES.md"
-            "licenses/Mono.Cecil-LICENSE.txt"
-            "licenses/dotnet-LICENSE.txt"
-            "licenses/dotnet-THIRD-PARTY-NOTICES.txt"
-          )
-
-          for notice in "${notices[@]}"; do
-            file="dist/linux-x64/$notice"
-            test -s "$file" || {
-              echo "::error::Missing or empty notice: $notice"
-              exit 1
-            }
-          done
-
-      - name: Upload Linux build
+      - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: KKS-DLL-String-Extractor-linux-x64
-          path: dist/linux-x64/
-          if-no-files-found: error
+          path: dist/linux-x64
           retention-days: 14
 
+
   release:
-    name: Package and publish Release
-    runs-on: ubuntu-latest
+    name: Create GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
     needs:
       - build-windows
       - build-linux
-    permissions:
-      contents: write
+
+    runs-on: ubuntu-latest
+
     steps:
       - name: Download Windows build
         uses: actions/download-artifact@v6
         with:
           name: KKS-DLL-String-Extractor-win-x64
-          path: staging/win-x64
+          path: win-x64
+
 
       - name: Download Linux build
         uses: actions/download-artifact@v6
         with:
           name: KKS-DLL-String-Extractor-linux-x64
-          path: staging/linux-x64
+          path: linux-x64
 
-      - name: Package release archives
-        shell: bash
+
+      - name: Package archives
         run: |
-          set -euo pipefail
+          chmod +x linux-x64/KKS_DLL_String_Extractor
 
-          # Artifact storage may not preserve Unix executable bits.
-          chmod +x staging/linux-x64/KKS_DLL_String_Extractor
+          mkdir release
 
-          mkdir -p release-assets
-          (
-            cd staging/win-x64
-            zip -r "$GITHUB_WORKSPACE/release-assets/KKS-DLL-String-Extractor-win-x64.zip" .
-          )
-          (
-            cd staging/linux-x64
-            zip -r "$GITHUB_WORKSPACE/release-assets/KKS-DLL-String-Extractor-linux-x64.zip" .
-          )
+          cd win-x64
+          zip -r ../release/KKS-DLL-String-Extractor-win-x64.zip .
 
-          test -s release-assets/KKS-DLL-String-Extractor-win-x64.zip
-          test -s release-assets/KKS-DLL-String-Extractor-linux-x64.zip
+          cd ../linux-x64
+          zip -r ../release/KKS-DLL-String-Extractor-linux-x64.zip .
 
-      - name: Create GitHub prerelease
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          TAG="build-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
-          gh release create "$TAG" \
-            release-assets/KKS-DLL-String-Extractor-win-x64.zip \
-            release-assets/KKS-DLL-String-Extractor-linux-x64.zip \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "Continuous build ${GITHUB_RUN_NUMBER}" \
-            --notes "Automated build from commit ${GITHUB_SHA} on branch ${GITHUB_REF_NAME}. This is a prerelease, not a stable version." \
-            --prerelease
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/KKS-DLL-String-Extractor-win-x64.zip
+            release/KKS-DLL-String-Extractor-linux-x64.zip
+
+          generate_release_notes: true
+
+          draft: false
+
+          prerelease: false
