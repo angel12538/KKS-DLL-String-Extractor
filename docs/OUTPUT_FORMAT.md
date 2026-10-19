@@ -30,7 +30,7 @@ and stored in `SpecialStrings_Exact.txt` / `ByPlugin_Special` as the **raw UTF-1
 code units encoded with Base64**. This archive is lossless (even for isolated
 surrogates) but it is NOT a ready-made XUnity translation key.
 
-From v2.6.3, the preview appears immediately after each `[SPECIAL:...]` reference
+From v2.6.4, the preview appears immediately after each `[SPECIAL:...]` reference
 in all main lists and per-plugin lists. Multiline configuration descriptions
 therefore remain visible while browsing `UIStrings.txt` or `UI_HighConfidence.txt`.
 Actual line breaks appear as literal `\n` / `\r`, and literal backslashes as `\\`.

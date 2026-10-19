@@ -1,10 +1,12 @@
 # Changelog
 
-## [2.6.3] - 2026-10-19
+## [2.6.4] - 2026-10-19
 
 - Show a complete searchable preview beside every special-string reference in main and per-plugin TXT lists. Multiline configuration descriptions previously appeared only as IDs there, making them look missing.
 - Preserve exact UTF-16LE archives, stable IDs, filtering and ordinary translation keys. Preview comments escape line breaks and do not create partial source keys.
 - Add a managed-DLL regression for multiline configuration descriptions in all six global/per-plugin lists, and use the current application version in generated file headers.
+
+- Fix release workflow validation by merging duplicate push event definitions; preserve main-branch, version-tag and manual triggers.
 
 ## [2.6.2] - 2026-10-10
 
