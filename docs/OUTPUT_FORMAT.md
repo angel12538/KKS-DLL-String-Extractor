@@ -20,6 +20,7 @@ Reset=
 - `ByPlugin/*.txt`: each DLL deduplicated separately; duplicates between different DLLs are allowed.
 - `UIStrings.txt` and `UI_HighConfidence.txt`: heuristic subsets only. Technical data remain in `AllStrings.txt`.
 - Finite labels built from a static string dictionary and a static string array are reconstructed when a UI `Select` lambda combines them with a literal separator. For example, `Bra`, `On`, and `: ` become `Bra: On` in the normal exports.
+- Reconstruction follows known collection replacements and the latest captured-name assignment. A generated label must feed directly into the returned `GUIContent`. Ambiguous assignments and log-only concatenations are skipped instead of using stale values.
 
 ## Special originals / 特殊原文
 

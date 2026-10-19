@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Track the actual value assigned to static string collections, including array aliases, and invalidate prior values after unknown replacements.
+- Respect the latest captured-name assignment and skip ambiguous writes after delegate creation.
+- Require a reconstructed string to flow directly into the returned `GUIContent`; log-only concatenations no longer become high-confidence UI labels.
+- Add generated managed-DLL regression cases for normal labels, collection replacements, captured-variable overwrites and logging.
+
 ## [2.6.5] - 2026-10-19
 
 - Recover finite UI labels produced by static string-array projections, such as `Bra: On`, when plug-ins assemble them at runtime from separate label and state strings.

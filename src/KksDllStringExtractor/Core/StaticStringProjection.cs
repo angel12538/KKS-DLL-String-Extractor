@@ -22,7 +22,7 @@ internal static class StaticStringProjection
         var emitted = new HashSet<string>(StringComparer.Ordinal);
         foreach (var method in owner.Methods.Where(m => m.HasBody))
         {
-            var instructions = method.Body.Instructions;
+            var instructions = GetCode(method);
             for (int selectIndex = 0; selectIndex < instructions.Count; selectIndex++)
             {
                 if (!IsSelect(instructions[selectIndex])) continue;
@@ -32,12 +32,12 @@ internal static class StaticStringProjection
                 var lambda = Resolve(owner.Module, lambdaReference);
                 if (lambda == null || !IsGuiContentFactory(lambda)) continue;
 
-                string? arrayField = FindArrayField(instructions, lambdaIndex, selectIndex, arrays);
+                string? arrayField = FindArrayField(instructions, lambdaIndex, arrays);
                 if (arrayField == null) continue;
 
                 foreach (var concat in FindLabelConcats(lambda))
                 {
-                    var staticValues = FindCapturedDictionaryValues(instructions, concat.CapturedField, dictionaries);
+                    var staticValues = FindCapturedValues(instructions, lambdaIndex, concat.CapturedField, dictionaries);
                     if (staticValues == null) continue;
                     foreach (string prefix in staticValues)
                     foreach (string value in arrays[arrayField])
@@ -56,7 +56,9 @@ internal static class StaticStringProjection
     static void ReadStaticCollections(MethodDefinition cctor,
         Dictionary<string, List<string>> arrays, Dictionary<string, List<string>> dictionaries)
     {
-        var instructions = cctor.Body.Instructions;
+        var instructions = GetCode(cctor);
+        // A conditional initializer needs control-flow analysis; do not merge its branches.
+        if (instructions.Any(i => i.OpCode.FlowControl is FlowControl.Branch or FlowControl.Cond_Branch)) return;
         for (int storeIndex = 0; storeIndex < instructions.Count; storeIndex++)
         {
             if (instructions[storeIndex].OpCode != OpCodes.Stsfld || instructions[storeIndex].Operand is not FieldReference field)
@@ -64,59 +66,84 @@ internal static class StaticStringProjection
 
             if (field.FieldType is ArrayType array && array.ElementType.FullName == "System.String")
             {
-                int allocation = FindStringArrayAllocation(instructions, storeIndex);
-                if (allocation < 0) continue;
-                var indexed = new SortedDictionary<int, string>();
-                for (int i = allocation + 1; i < storeIndex; i++)
-                {
-                    if (instructions[i].OpCode != OpCodes.Stelem_Ref || i < 3 ||
-                        instructions[i - 1].OpCode != OpCodes.Ldstr || instructions[i - 1].Operand is not string value ||
-                        !TryReadInt32(instructions[i - 2], out int elementIndex) ||
-                        instructions[i - 3].OpCode != OpCodes.Dup)
-                        continue;
-                    indexed[elementIndex] = value;
-                }
-                if (indexed.Count > 0)
-                    arrays[field.FullName] = indexed.Values.ToList();
+                // Forget the old value even when the replacement cannot be understood.
+                var values = ReadArrayValue(instructions, storeIndex, arrays);
+                arrays.Remove(field.FullName);
+                if (values != null) arrays[field.FullName] = values;
                 continue;
             }
 
             if (!IsStringDictionary(field.FieldType)) continue;
-            int dictionaryAllocation = FindDictionaryAllocation(instructions, storeIndex, field.FieldType.FullName);
-            if (dictionaryAllocation < 0) continue;
-            var values = new List<string>();
-            for (int i = dictionaryAllocation + 1; i < storeIndex; i++)
-            {
-                var op = instructions[i].OpCode;
-                if (op != OpCodes.Call && op != OpCodes.Callvirt ||
-                    instructions[i].Operand is not MethodReference add || add.Name != "Add" ||
-                    add.Parameters.Count != 2 ||
-                    add.DeclaringType.FullName != field.FieldType.FullName || i == 0 ||
-                    instructions[i - 1].OpCode != OpCodes.Ldstr || instructions[i - 1].Operand is not string value)
-                    continue;
-                values.Add(value);
-            }
-            if (values.Count > 0)
-                dictionaries[field.FullName] = values.Distinct(StringComparer.Ordinal).ToList();
+            var dictionaryValues = ReadDictionaryValue(instructions, storeIndex, field, dictionaries);
+            dictionaries.Remove(field.FullName);
+            if (dictionaryValues != null) dictionaries[field.FullName] = dictionaryValues;
         }
     }
 
-    static int FindStringArrayAllocation(Mono.Collections.Generic.Collection<Instruction> instructions, int storeIndex)
+    static List<string>? ReadAlias(IReadOnlyList<Instruction> instructions, int storeIndex,
+        Dictionary<string, List<string>> known)
     {
-        for (int i = storeIndex - 1; i >= 0; i--)
-            if (instructions[i].OpCode == OpCodes.Newarr && instructions[i].Operand is TypeReference element &&
-                element.FullName == "System.String") return i;
-        return -1;
+        return storeIndex > 0 && instructions[storeIndex - 1].OpCode == OpCodes.Ldsfld &&
+            instructions[storeIndex - 1].Operand is FieldReference source &&
+            known.TryGetValue(source.FullName, out var values) ? new List<string>(values) : null;
     }
 
-    static int FindDictionaryAllocation(Mono.Collections.Generic.Collection<Instruction> instructions,
-        int storeIndex, string fieldType)
+    static List<string>? ReadArrayValue(IReadOnlyList<Instruction> instructions, int storeIndex,
+        Dictionary<string, List<string>> arrays)
     {
-        for (int i = storeIndex - 1; i >= 0; i--)
-            if (instructions[i].OpCode == OpCodes.Newobj && instructions[i].Operand is MethodReference constructor &&
-                constructor.Name == ".ctor" && constructor.DeclaringType.FullName == fieldType) return i;
-        return -1;
+        var alias = ReadAlias(instructions, storeIndex, arrays);
+        if (alias != null) return alias;
+        var indexed = new SortedDictionary<int, string>();
+        int i = storeIndex - 1;
+        while (i >= 3 && instructions[i].OpCode == OpCodes.Stelem_Ref)
+        {
+            if (instructions[i - 1].OpCode != OpCodes.Ldstr || instructions[i - 1].Operand is not string value ||
+                !TryReadInt32(instructions[i - 2], out int index) || instructions[i - 3].OpCode != OpCodes.Dup ||
+                index < 0) return null;
+            // Walking backwards: the last assignment to an element wins.
+            indexed.TryAdd(index, value);
+            i -= 4;
+        }
+        if (i < 1 || instructions[i].OpCode != OpCodes.Newarr ||
+            instructions[i].Operand is not TypeReference element || element.FullName != "System.String" ||
+            !TryReadInt32(instructions[i - 1], out int length) || length != indexed.Count ||
+            indexed.Keys.Where((index, position) => index != position).Any()) return null;
+        return indexed.Values.ToList();
     }
+
+    static List<string>? ReadDictionaryValue(IReadOnlyList<Instruction> instructions, int storeIndex,
+        FieldReference field, Dictionary<string, List<string>> dictionaries)
+    {
+        var alias = ReadAlias(instructions, storeIndex, dictionaries);
+        if (alias != null) return alias;
+        var values = new List<string>();
+        int i = storeIndex - 1;
+        while (i >= 3 && IsCall(instructions[i]) && instructions[i].Operand is MethodReference add &&
+            add.Name == "Add" && add.Parameters.Count == 2 && add.DeclaringType.FullName == field.FieldType.FullName)
+        {
+            if (instructions[i - 1].OpCode != OpCodes.Ldstr || instructions[i - 1].Operand is not string value ||
+                !IsSimpleLoad(instructions[i - 2]) || instructions[i - 3].OpCode != OpCodes.Dup) return null;
+            values.Add(value);
+            i -= 4;
+        }
+        if (i < 0 || instructions[i].OpCode != OpCodes.Newobj ||
+            instructions[i].Operand is not MethodReference constructor || constructor.Name != ".ctor" ||
+            constructor.Parameters.Count != 0 || constructor.DeclaringType.FullName != field.FieldType.FullName)
+            return null;
+        values.Reverse();
+        return values.Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    static List<Instruction> GetCode(MethodDefinition method) =>
+        method.Body.Instructions.Where(i => i.OpCode != OpCodes.Nop).ToList();
+
+    static bool IsCall(Instruction instruction) =>
+        instruction.OpCode == OpCodes.Call || instruction.OpCode == OpCodes.Callvirt;
+
+    static bool IsSimpleLoad(Instruction instruction) =>
+        instruction.OpCode.Code is Code.Ldarg or Code.Ldarg_S or Code.Ldarg_0 or Code.Ldarg_1 or Code.Ldarg_2 or Code.Ldarg_3 or
+            Code.Ldloc or Code.Ldloc_S or Code.Ldloc_0 or Code.Ldloc_1 or Code.Ldloc_2 or Code.Ldloc_3 or Code.Ldstr ||
+        TryReadInt32(instruction, out _);
 
     static bool IsStringDictionary(TypeReference type) => type is GenericInstanceType generic &&
         generic.ElementType.FullName == "System.Collections.Generic.Dictionary`2" &&
@@ -127,23 +154,24 @@ internal static class StaticStringProjection
         instruction.Operand is MethodReference method && method.Name == "Select" &&
         method.DeclaringType.FullName == "System.Linq.Enumerable";
 
-    static int FindLambda(Mono.Collections.Generic.Collection<Instruction> instructions, int selectIndex)
+    static int FindLambda(IReadOnlyList<Instruction> instructions, int selectIndex)
     {
-        int start = Math.Max(0, selectIndex - 12);
-        for (int i = selectIndex - 1; i >= start; i--)
-            if (instructions[i].OpCode == OpCodes.Ldftn && instructions[i].Operand is MethodReference)
-                return i;
-        return -1;
+        // Match the actual Select arguments, not an unrelated nearby delegate.
+        return selectIndex >= 4 && instructions[selectIndex - 1].OpCode == OpCodes.Newobj &&
+            instructions[selectIndex - 1].Operand is MethodReference constructor &&
+            constructor.DeclaringType is GenericInstanceType func && func.ElementType.FullName == "System.Func`2" &&
+            func.GenericArguments[0].FullName == "System.String" &&
+            func.GenericArguments[1].FullName == "UnityEngine.GUIContent" &&
+            instructions[selectIndex - 2].OpCode == OpCodes.Ldftn &&
+            IsSimpleLoad(instructions[selectIndex - 3]) ? selectIndex - 2 : -1;
     }
 
-    static string? FindArrayField(Mono.Collections.Generic.Collection<Instruction> instructions, int lambdaIndex,
-        int selectIndex, Dictionary<string, List<string>> arrays)
+    static string? FindArrayField(IReadOnlyList<Instruction> instructions, int lambdaIndex,
+        Dictionary<string, List<string>> arrays)
     {
-        int start = Math.Max(0, lambdaIndex - 24);
-        for (int i = lambdaIndex - 1; i >= start && i < selectIndex; i--)
-            if (instructions[i].OpCode == OpCodes.Ldsfld && instructions[i].Operand is FieldReference field &&
-                arrays.ContainsKey(field.FullName)) return field.FullName;
-        return null;
+        return lambdaIndex >= 2 && instructions[lambdaIndex - 2].OpCode == OpCodes.Ldsfld &&
+            instructions[lambdaIndex - 2].Operand is FieldReference field && arrays.ContainsKey(field.FullName)
+            ? field.FullName : null;
     }
 
     static MethodDefinition? Resolve(ModuleDefinition module, MethodReference method)
@@ -170,7 +198,7 @@ internal static class StaticStringProjection
     static bool IsGuiContentFactory(MethodDefinition lambda)
     {
         if (lambda.ReturnType.FullName != "UnityEngine.GUIContent" || !lambda.HasBody ||
-            lambda.Parameters.Count == 0 || lambda.Parameters[^1].ParameterType.FullName != "System.String")
+            !lambda.HasThis || lambda.Parameters.Count != 1 || lambda.Parameters[0].ParameterType.FullName != "System.String")
             return false;
         return lambda.Body.Instructions.Any(i => i.OpCode == OpCodes.Newobj &&
             i.Operand is MethodReference constructor && constructor.Name == ".ctor" &&
@@ -180,7 +208,7 @@ internal static class StaticStringProjection
 
     static IEnumerable<(string CapturedField, string Delimiter, int Offset)> FindLabelConcats(MethodDefinition lambda)
     {
-        var instructions = lambda.Body.Instructions;
+        var instructions = GetCode(lambda);
         for (int i = 4; i < instructions.Count; i++)
         {
             if (instructions[i].OpCode != OpCodes.Call || instructions[i].Operand is not MethodReference concat ||
@@ -189,7 +217,13 @@ internal static class StaticStringProjection
                 instructions[i - 3].OpCode != OpCodes.Ldfld || instructions[i - 3].Operand is not FieldReference captured ||
                 captured.FieldType.FullName != "System.String" ||
                 instructions[i - 2].OpCode != OpCodes.Ldstr || instructions[i - 2].Operand is not string delimiter ||
-                !IsStringParameterLoad(instructions[i - 1], lambda))
+                !IsStringParameterLoad(instructions[i - 1], lambda) ||
+                instructions[i - 4].OpCode != OpCodes.Ldarg_0 ||
+                i + 2 >= instructions.Count || instructions[i + 1].OpCode != OpCodes.Newobj ||
+                instructions[i + 1].Operand is not MethodReference constructor ||
+                constructor.DeclaringType.FullName != "UnityEngine.GUIContent" || constructor.Name != ".ctor" ||
+                constructor.Parameters.Count != 1 || constructor.Parameters[0].ParameterType.FullName != "System.String" ||
+                instructions[i + 2].OpCode != OpCodes.Ret)
                 continue;
             yield return (captured.FullName, delimiter, instructions[i].Offset);
         }
@@ -215,32 +249,38 @@ internal static class StaticStringProjection
             method.Parameters[parameterIndex].ParameterType.FullName == "System.String";
     }
 
-    static List<string>? FindCapturedDictionaryValues(Mono.Collections.Generic.Collection<Instruction> instructions,
+    static List<string>? FindCapturedValues(IReadOnlyList<Instruction> instructions, int lambdaIndex,
         string capturedField, Dictionary<string, List<string>> dictionaries)
     {
-        for (int storeIndex = 0; storeIndex < instructions.Count; storeIndex++)
+        if (instructions.Any(i => i.OpCode.FlowControl is FlowControl.Branch or FlowControl.Cond_Branch)) return null;
+        // Later writes invalidate older dictionary evidence, including writes after
+        // delegate creation: Select can defer evaluation until after that write.
+        for (int storeIndex = instructions.Count - 1; storeIndex >= 0; storeIndex--)
         {
             if (instructions[storeIndex].OpCode != OpCodes.Stfld ||
                 instructions[storeIndex].Operand is not FieldReference target || target.FullName != capturedField)
                 continue;
 
-            int start = Math.Max(0, storeIndex - 18);
-            for (int i = storeIndex - 1; i >= start; i--)
-            {
-                var op = instructions[i].OpCode;
-                if (op != OpCodes.Call && op != OpCodes.Callvirt ||
-                    instructions[i].Operand is not MethodReference getter || getter.Name != "get_Item" ||
-                    getter.DeclaringType.FullName != target.DeclaringType.FullName &&
-                    !getter.DeclaringType.FullName.StartsWith("System.Collections.Generic.Dictionary`2", StringComparison.Ordinal))
-                    continue;
+            if (storeIndex >= lambdaIndex || storeIndex < 2) return null;
+            if (instructions[storeIndex - 1].OpCode == OpCodes.Ldstr &&
+                instructions[storeIndex - 1].Operand is string literal)
+                return SameLoad(instructions[storeIndex - 2], instructions[lambdaIndex - 1]) ? new List<string> { literal } : null;
 
-                for (int j = i - 1; j >= start; j--)
-                    if (instructions[j].OpCode == OpCodes.Ldsfld && instructions[j].Operand is FieldReference dictionaryField &&
-                        dictionaries.TryGetValue(dictionaryField.FullName, out var values)) return values;
-            }
+            if (storeIndex < 4 || !IsCall(instructions[storeIndex - 1]) ||
+                instructions[storeIndex - 1].Operand is not MethodReference getter || getter.Name != "get_Item" ||
+                getter.Parameters.Count != 1 || !IsStringDictionary(getter.DeclaringType) ||
+                !IsSimpleLoad(instructions[storeIndex - 2]) ||
+                instructions[storeIndex - 3].OpCode != OpCodes.Ldsfld ||
+                instructions[storeIndex - 3].Operand is not FieldReference dictionaryField ||
+                getter.DeclaringType.FullName != dictionaryField.FieldType.FullName ||
+                !SameLoad(instructions[storeIndex - 4], instructions[lambdaIndex - 1])) return null;
+            return dictionaries.TryGetValue(dictionaryField.FullName, out var values) ? values : null;
         }
         return null;
     }
+
+    static bool SameLoad(Instruction first, Instruction second) =>
+        IsSimpleLoad(first) && first.OpCode == second.OpCode && Equals(first.Operand, second.Operand);
 
     static bool TryReadInt32(Instruction instruction, out int value)
     {

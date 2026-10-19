@@ -7,11 +7,13 @@
 | `Program.cs` | CLI argument handling, output protection, summary, exit codes |
 | `Models/ScanModels.cs` | Source records and classification results |
 | `Core/Scanner.cs` | Mono.Cecil IL string extraction and embedded resource handling |
+| `Core/StaticStringProjection.cs` | Conservative reconstruction of finite static UI labels |
 | `Core/CallInspector.cs` | Conservative call-site classification (GUI/config/technical) |
 | `Core/Classifier.cs` | Script classification and UI candidate scoring |
 | `Core/TxtExporter.cs` | Exact-key deduplication, TXT groups, special-text archive |
 | `Diagnostics/SelfTests.cs` | Fast self-tests and managed-assembly scan smoke test |
 | `Diagnostics/RegressionTests.cs` | Generated DLL fixtures, resource boundaries, archive references and directory recovery |
+| `Diagnostics/StaticProjectionTests.cs` | Generated DLL fixtures for UI combinations, collection/capture replacements and log filtering |
 
 Workflow: `Scanner.Scan` → `Classifier.Analyze` → `TxtExporter.Export`.
 
