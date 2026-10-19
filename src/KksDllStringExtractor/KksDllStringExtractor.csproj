@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>KKS_DLL_String_Extractor</AssemblyName>
-    <Version>2.6.5</Version>
+    <Version>2.6.6</Version>
     <Authors>angel12538</Authors>
     <Description>Static multilingual string extraction for KKS BepInEx plugin DLLs.</Description>
   </PropertyGroup>

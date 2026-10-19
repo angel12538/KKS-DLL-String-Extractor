@@ -4,7 +4,10 @@ using System.Resources;
 using System.Text;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using System.Xml;
+using System.Xml.Linq;
 using AssemblyDefinition = Mono.Cecil.AssemblyDefinition;
+using ModuleDefinition = Mono.Cecil.ModuleDefinition;
 using TypeDefinition = Mono.Cecil.TypeDefinition;
 
 namespace KksDllStringExtractor;
@@ -45,7 +48,7 @@ internal static class Scanner
                     }
                     rows.AddRange(StaticStringProjection.Read(type, relative));
                 }
-                ReadResources(file, relative, rows, errors, maxResourceBytes);
+                ReadResources(file, relative, asm.MainModule, rows, errors, maxResourceBytes);
                 if (dlls % 20 == 0) Console.WriteLine($"Scanned {dlls} DLLs...");
             }
             catch (Exception ex)
@@ -105,7 +108,7 @@ internal static class Scanner
         }
     }
 
-    static void ReadResources(string file, string dll, List<RawRow> rows, List<string> errors, int maxResourceBytes)
+    static void ReadResources(string file, string dll, ModuleDefinition module, List<RawRow> rows, List<string> errors, int maxResourceBytes)
     {
         // Cecil's GetResourceStream allocates the whole payload before returning.
         // Read the resource table and length prefix directly so limits apply BEFORE allocation.
@@ -120,7 +123,7 @@ internal static class Scanner
             if (!resource.Implementation.IsNil) continue; // Only embedded resources.
             string name = metadata.GetString(resource.Name);
             bool dotResources = name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase);
-            if (!dotResources && !TextExt.Any(ext => name.EndsWith(ext, StringComparison.OrdinalIgnoreCase))) continue;
+            bool plainText = TextExt.Any(ext => name.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
             try
             {
                 if (!pe.PEHeaders.TryGetDirectoryOffset(directory, out int directoryOffset) ||
@@ -130,6 +133,15 @@ internal static class Scanner
                 uint length = binary.ReadUInt32();
                 if (length > (long)directory.Size - resource.Offset - sizeof(uint) || length > stream.Length - stream.Position)
                     throw new BadImageFormatException("Embedded resource extends beyond the DLL resource directory.");
+                bool bundle = false;
+                if (!dotResources && !plainText)
+                {
+                    if (length < 8) continue;
+                    byte[] signature = binary.ReadBytes(8);
+                    bundle = UnityBundleText.IsBundle(signature);
+                    if (!bundle) continue;
+                    stream.Position -= signature.Length;
+                }
                 if (length > maxResourceBytes)
                 {
                     errors.Add($"{dll} | {name} | resource too large ({length} bytes; limit {maxResourceBytes})");
@@ -138,24 +150,54 @@ internal static class Scanner
                 byte[] bytes = new byte[(int)length];
                 stream.ReadExactly(bytes);
                 if (dotResources) ReadDotResources(dll, name, bytes, rows, errors);
-                else
+                else if (bundle)
                 {
-                    var decoded = DecodeText(bytes);
-                    if (decoded == null) { errors.Add($"{dll} | {name} | text encoding unsupported or invalid"); continue; }
-                    if (decoded.Length != 0)
-                        rows.Add(new RawRow(dll, "RESOURCE_DOCUMENT", name, "full original resource", "", decoded));
-                    using var lineReader = new StringReader(decoded);
-                    string? line;
-                    int lineNumber = 0;
-                    while ((line = lineReader.ReadLine()) != null)
-                    {
-                        lineNumber++;
-                        if (!string.IsNullOrWhiteSpace(line))
-                            rows.Add(new RawRow(dll, "RESOURCE_LINE", name, "", $"Line {lineNumber}", line));
-                    }
+                    foreach (var asset in UnityBundleText.Read(bytes, maxResourceBytes))
+                        ReadText(dll, name + "/" + asset.Path, asset.Bytes, module, rows, errors, maxResourceBytes);
                 }
+                else ReadText(dll, name, bytes, module, rows, errors, maxResourceBytes);
             }
             catch (Exception ex) { errors.Add($"{dll} | {name} | {ex.GetType().Name}: {ex.Message}"); }
+        }
+    }
+
+    static void ReadText(string dll, string name, byte[] bytes, ModuleDefinition module,
+        List<RawRow> rows, List<string> errors, int limit)
+    {
+        var decoded = DecodeText(bytes);
+        if (decoded == null) { errors.Add($"{dll} | {name} | text encoding unsupported or invalid"); return; }
+        if (decoded.Length != 0)
+            rows.Add(new RawRow(dll, "RESOURCE_DOCUMENT", name, "full original resource", "", decoded));
+        using var lineReader = new StringReader(decoded);
+        string? line;
+        int lineNumber = 0;
+        while ((line = lineReader.ReadLine()) != null)
+        {
+            lineNumber++;
+            if (!string.IsNullOrWhiteSpace(line))
+                rows.Add(new RawRow(dll, "RESOURCE_LINE", name, "", $"Line {lineNumber}", line));
+        }
+        // XML markup is not the UI lookup key. Export decoded leaf values too.
+        if (!decoded.AsSpan().TrimStart().StartsWith("<", StringComparison.Ordinal)) return;
+        try
+        {
+            using var xml = XmlReader.Create(new StringReader(decoded), new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = limit
+            });
+            var document = XDocument.Load(xml, LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo);
+            foreach (var element in document.Descendants().Where(e => !e.HasElements && e.Value.Length != 0))
+                rows.Add(new RawRow(dll, "RESOURCE_XML_VALUE", name, element.Name.LocalName,
+                    $"Line {((IXmlLineInfo)element).LineNumber}", element.Value));
+            rows.AddRange(XmlUiProjection.Read(document, module, dll, name));
+        }
+        catch (XmlException ex)
+        {
+            // Help/HTML/plain-text resources can start with '<' without being XML.
+            // Their original document/lines above remain available unchanged.
+            if (name.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) ||
+                decoded.AsSpan().TrimStart().StartsWith("<?xml", StringComparison.Ordinal))
+                errors.Add($"{dll} | {name} | XML values skipped: {ex.Message}");
         }
     }
     static IEnumerable<TypeDefinition> Flatten(IEnumerable<TypeDefinition> types)

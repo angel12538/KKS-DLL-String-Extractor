@@ -21,6 +21,7 @@ Reset=
 - `UIStrings.txt` and `UI_HighConfidence.txt`: heuristic subsets only. Technical data remain in `AllStrings.txt`.
 - Finite labels built from a static string dictionary and a static string array are reconstructed when a UI `Select` lambda combines them with a literal separator. For example, `Bra`, `On`, and `: ` become `Bra: On` in the normal exports.
 - Reconstruction follows known collection replacements and the latest captured-name assignment. A generated label must feed directly into the returned `GUIContent`. Ambiguous assignments and log-only concatenations are skipped instead of using stale values.
+- Embedded UnityFS bundles are detected by signature even when their names have no text extension. Supported TextAssets retain full documents/lines; XML leaf values are also exported as decoded text without XML tags. Conditional prefixes are reconstructed only for recognized XML-to-field mappings backed by literal enum sets. Such resource-derived candidates are not marked as direct UI API evidence.
 
 ## Special originals / 特殊原文
 
@@ -58,3 +59,5 @@ runtime-captured key. Never use a Base64 field itself as the translation key.
 - Calling API proximity is a heuristic, not a full IL dataflow proof.
 - The program does not modify game plugins or supply translation injection.
 - Resource lines may be extracted separately from the whole resource document.
+- UnityFS support covers versions 6–8, uncompressed/LZ4/LZ4HC blocks and player serialized-file versions 14–21. LZMA, editor layouts, other bundle formats and other serialized object classes are not decoded; encountered unsupported formats are recorded in `Errors.txt`.
+- Bundles are read block by block. Compressed resources, each block, metadata and total extracted TextAsset bytes remain bounded; logical bundle length/decompression work is limited to 512 MiB. XML DTDs and external entity resolution are disabled.

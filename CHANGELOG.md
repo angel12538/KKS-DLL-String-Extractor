@@ -1,13 +1,17 @@
 # Changelog
 
-## Unreleased
+## [2.6.6] - 2026-10-19
+
+- Read TextAssets inside embedded UnityFS bundles (uncompressed/LZ4/LZ4HC), regardless of resource extension, using bounded block reads instead of expanding texture data.
+- Export decoded XML leaf values and reconstruct conditional labels backed by an XML-to-field mapping and a static enum set, including LewdCrestX descriptions and `[+] Violove`.
+- Add generated UnityFS/XML regression fixtures, compressed-block/range checks, field-overwrite rejection and DTD/entity restrictions. Unsupported bundle layouts and codecs are reported in `Errors.txt`.
+
+## [2.6.5] - 2026-10-19
 
 - Track the actual value assigned to static string collections, including array aliases, and invalidate prior values after unknown replacements.
 - Respect the latest captured-name assignment and skip ambiguous writes after delegate creation.
 - Require a reconstructed string to flow directly into the returned `GUIContent`; log-only concatenations no longer become high-confidence UI labels.
 - Add generated managed-DLL regression cases for normal labels, collection replacements, captured-variable overwrites and logging.
-
-## [2.6.5] - 2026-10-19
 
 - Recover finite UI labels produced by static string-array projections, such as `Bra: On`, when plug-ins assemble them at runtime from separate label and state strings.
 - Keep these reconstructed labels in the normal string exports and classify them as direct UI strings.
