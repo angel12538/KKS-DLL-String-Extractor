@@ -12,7 +12,6 @@ on:
       - "**/*.props"
       - "**/*.targets"
 
-  push:
     tags:
       - "v*"
 
