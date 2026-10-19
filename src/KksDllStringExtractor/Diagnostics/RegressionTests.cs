@@ -10,6 +10,7 @@ internal static class RegressionTests
 {
     const string SpecialText = "Line 1\nLine 2";
     const string UnicodeText = "保存😀\r\nText";
+    const string MultilineDescription = "Keep clothing state after scenes.\n\nEffects end after changing clothes.\n\nChanges take effect after restart.";
 
     static void Check(bool ok, string message)
     {
@@ -30,6 +31,7 @@ internal static class RegressionTests
             var report = Scanner.Scan(fixtures, maxResourceBytes: 1024);
             Check(report.DllCount == 1 && report.Rows.Any(r => r.Text == "KKS_TEST_こんにちは_Hello"), "managed IL extraction (including single-file EXE)");
             Check(report.Rows.Any(r => r.Text == SpecialText && r.Usage == "DirectUI"), "real IL GUI call detection");
+            Check(report.Rows.Any(r => r.Text == MultilineDescription && r.Usage == "DirectConfig"), "multiline configuration description extracted whole");
             Check(report.Errors.Count(e => e.Contains("resource too large", StringComparison.Ordinal)) == 2, "text AND .resources size limits");
             Check(!report.Rows.Any(r => r.Source is "Oversized.txt" or "Oversized.resources" or "Ignored.png"), "oversized and binary payloads not extracted");
             Check(!report.Errors.Any(e => e.Contains("Ignored.png", StringComparison.Ordinal)), "unsupported resource ignored before decoding");
@@ -50,10 +52,30 @@ internal static class RegressionTests
             data.Add(Classifier.Analyze(new RawRow("Second.dll", "IL", "Other.Window", "DrawGUI()", "IL_0010", SpecialText, "DirectUI", "UnityEngine.GUILayout::Label")));
             string output = Path.Combine(root, "export");
             TxtExporter.Export(data, output);
+            CheckDescriptionVisibility(output);
             CheckArchiveReferences(output);
             CheckDirectoryRecovery(root, fixture);
         }
         finally { Directory.Delete(root, true); }
+    }
+
+    static void CheckDescriptionVisibility(string output)
+    {
+        string preview = "// preview=" + MultilineDescription.Replace("\n", "\\n", StringComparison.Ordinal);
+        string[] files = new[] { "AllStrings.txt", "Translatable_AllLanguages.txt", "UIStrings.txt", "UI_HighConfidence.txt" }
+            .Select(name => Path.Combine(output, name))
+            .Concat(Directory.GetFiles(Path.Combine(output, "ByPlugin"), "RegressionFixture__*.txt"))
+            .Concat(Directory.GetFiles(Path.Combine(output, "ByPlugin_UI"), "RegressionFixture__*.txt")).ToArray();
+        Check(files.Length == 6, "global and per-plugin description lists present");
+        foreach (string file in files)
+        {
+            string[] lines = File.ReadAllLines(file);
+            int index = Array.IndexOf(lines, preview);
+            Check(index > 0 && lines[index - 1].StartsWith("// [SPECIAL:", StringComparison.Ordinal), "complete searchable description beside its archive ID: " + Path.GetFileName(file));
+            Check(!lines.Contains("Effects end after changing clothes.="), "multiline preview cannot create active partial translation keys");
+        }
+        string archive = File.ReadAllText(Path.Combine(output, "SpecialStrings_Exact.txt"));
+        Check(archive.Contains("// utf16le-base64=" + Convert.ToBase64String(TxtExporter.ExactUtf16Bytes(MultilineDescription)), StringComparison.Ordinal), "visible description retains exact archived line breaks");
     }
 
     static void CheckArchiveReferences(string output)
@@ -130,6 +152,17 @@ internal static class RegressionTests
             draw.Body.Instructions.Add(Instruction.Create(OpCodes.Call, label));
         }
         draw.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));
+        var bepinex = new AssemblyNameReference("BepInEx", new Version(5, 4, 0, 0));
+        module.AssemblyReferences.Add(bepinex);
+        var descriptionType = new TypeReference("BepInEx.Configuration", "ConfigDescription", module, bepinex);
+        var constructor = new MethodReference(".ctor", module.TypeSystem.Void, descriptionType) { HasThis = true };
+        constructor.Parameters.Add(new ParameterDefinition(module.TypeSystem.String));
+        var awake = new MethodDefinition("Awake", MethodAttributes.Public | MethodAttributes.Static, module.TypeSystem.Void);
+        window.Methods.Add(awake);
+        awake.Body.Instructions.Add(Instruction.Create(OpCodes.Ldstr, MultilineDescription));
+        awake.Body.Instructions.Add(Instruction.Create(OpCodes.Newobj, constructor));
+        awake.Body.Instructions.Add(Instruction.Create(OpCodes.Pop));
+        awake.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));
         void Add(string name, byte[] bytes) => module.Resources.Add(new EmbeddedResource(name, ManifestResourceAttributes.Public, bytes));
         Add("Oversized.txt", new byte[2048]);
         Add("Oversized.resources", new byte[2048]);

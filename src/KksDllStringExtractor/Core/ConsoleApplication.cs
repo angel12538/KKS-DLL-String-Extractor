@@ -4,7 +4,7 @@ namespace KksDllStringExtractor;
 
 internal static class ConsoleApplication
 {
-    public const string Version = "2.6.2";
+    public const string Version = "2.6.3";
 
     public static int Run(string[] args, TextReader input, TextWriter output, TextWriter error, string baseDirectory)
     {

@@ -1,4 +1,4 @@
-KKS DLL 文本提取工具 v2.6.2（Windows x64）
+KKS DLL 文本提取工具 v2.6.3（Windows x64）
 
 使用方法
 1. 完整解压此 ZIP，无需另外安装 .NET，也无需管理员权限。
@@ -8,6 +8,8 @@ KKS DLL 文本提取工具 v2.6.2（Windows x64）
    Results_TXT\scan_日期时间_随机编号；也可以指定一个不存在或为空的目录。
 5. 扫描完成或报错后，窗口会保留。查看提示后按 Enter 关闭。
 6. 查看结果目录中的 AllStrings.txt、ScanSummary.txt 和 Errors.txt。
+   多行设置说明现在会显示在主要 TXT 的 // preview= 注释中，直接搜索即可找到。
+   预览中的 \n 表示真实换行；完整原文仍保存在 SpecialStrings_Exact.txt 中。
 
 第一步输入插件目录时直接按 Enter，可以取消并退出。
 如果程序目录没有写入权限，请在输出目录提示处填写有权限的新目录。

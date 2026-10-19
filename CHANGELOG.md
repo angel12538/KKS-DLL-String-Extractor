@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.6.3] - 2026-10-19
+
+- Show a complete searchable preview beside every special-string reference in main and per-plugin TXT lists. Multiline configuration descriptions previously appeared only as IDs there, making them look missing.
+- Preserve exact UTF-16LE archives, stable IDs, filtering and ordinary translation keys. Preview comments escape line breaks and do not create partial source keys.
+- Add a managed-DLL regression for multiline configuration descriptions in all six global/per-plugin lists, and use the current application version in generated file headers.
+
 ## [2.6.2] - 2026-10-10
 
 - Fix the apparent "flash and close" when double-clicking the Windows EXE without arguments: show Chinese interactive folder prompts instead of immediately exiting with usage code 2.

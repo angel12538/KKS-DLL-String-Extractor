@@ -47,14 +47,16 @@ internal static class TxtExporter
                 WriteExact(Path.Combine(special, safe + ".txt"), specialRows, "exact special originals for " + group.Key);
         }
         File.WriteAllText(Path.Combine(output, "Readme_重要说明.txt"),
-            "TXT v2.6.1：直接扫描 DLL，仅输出 TXT；不提供旧版转换、CSV/TSV、翻译加载或 DLL 修改。\r\n" +
+            $"TXT v{ConsoleApplication.Version}：直接扫描 DLL，仅输出 TXT；不提供旧版转换、CSV/TSV、翻译加载或 DLL 修改。\r\n" +
             "普通单行文本采用 原文=（不再使用 //原文=），按 // DLL文件名 / 类名 分组。\r\n" +
             "AllStrings.txt 对扫描范围全局去重；ByPlugin、ByPlugin_UI 和 ByPlugin_Special 各按 DLL 去重。\r\n" +
             "每个输出文件以完整原文作为精确去重键，区分大小写；不修剪空格、不转换语言、不规范化 Unicode。\r\n" +
             "分组标题只显示文件名和类名，不显示方法/命名空间。对资源文字显示资源名而非类名。\r\n" +
             "特别注意：去重只保留首次出现的来源分组，因此同一条字符串出现在多个类时只显示首次来源。\r\n" +
             "原文含真实换行、制表符、反斜杠、等号、前后空格或注释前缀等特殊情况时，\r\n" +
-            "主文件只标记 [SPECIAL]；SpecialStrings_Exact.txt / ByPlugin_Special 使用 UTF-16LE Base64 保存精确原文。\r\n" +
+            "主文件显示 [SPECIAL] 和紧随其后的 // preview=完整原文预览，方便直接搜索多行设置说明。\r\n" +
+            "预览把真实换行写成 \\n / \\r、反斜杠写成 \\\\；预览是阅读注释，不是可直接填写的翻译键。\r\n" +
+            "SpecialStrings_Exact.txt / ByPlugin_Special 使用 UTF-16LE Base64 保存精确原文。\r\n" +
             "特殊原文 ID 仅由精确文本决定，因此全部文本、UI 子集与按插件档案中的编号一致。\r\n" +
             "可用 PowerShell 的 [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String('BASE64')) 还原正常 UTF-16 字符串。\r\n" +
             "不要将 [SPECIAL] 标记或 Base64 当成 XUnity 翻译键。普通单行原文保留原样，不会自动生成译文。\r\n" +
@@ -172,7 +174,12 @@ internal static class TxtExporter
             foreach (var r in group.Value)
             {
                 if (NeedsExactArchive(r.Text))
+                {
                     w.WriteLine("// [SPECIAL:" + ExactId(r) + "] exact original in SpecialStrings_Exact.txt / ByPlugin_Special");
+                    // Keep multiline descriptions visible in the same lists as ordinary keys.
+                    // Preview escapes controls so text cannot introduce active translation lines.
+                    w.WriteLine("// preview=" + Preview(r.Text));
+                }
                 else
                     w.WriteLine(r.Text + "="); // Preserve original, no comment prefix.
             }
@@ -182,7 +189,7 @@ internal static class TxtExporter
     static void WriteExact(string file, IEnumerable<RawRow> rows, string purpose)
     {
         using var w = new StreamWriter(file, false, Utf8) { NewLine = "\r\n" };
-        w.WriteLine("// KKS DLL String Extractor v2.6.1 - " + purpose);
+        w.WriteLine($"// KKS DLL String Extractor v{ConsoleApplication.Version} - " + purpose);
         w.WriteLine("// Lossless original archive. utf16le-base64 is the exact .NET string, NOT an XUnity key.");
         w.WriteLine();
         foreach (var group in Group(rows.Where(x => NeedsExactArchive(x.Text))))

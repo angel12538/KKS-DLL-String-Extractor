@@ -70,7 +70,7 @@ internal static class SelfTests
         }
         RegressionTests.Run();
         ConsoleLaunchTests.Run();
-        Console.WriteLine("PASS: UI/path, Unicode, TXT/dedup/archive IDs, resource limits/encoding, directory recovery, managed DLL scan.");
+        Console.WriteLine("PASS: UI/path, Unicode, TXT/dedup/archive IDs, multiline description visibility, resource limits/encoding, directory recovery, managed DLL scan.");
         Console.WriteLine("PASS: interactive launch, Chinese paths, completion/error pause, cancellation, CLI compatibility, existing-output protection.");
     }
 }

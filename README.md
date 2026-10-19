@@ -14,7 +14,7 @@ A static, **multilingual** string extractor for **Koikatsu Sunshine (KKS) BepInE
 - Exports all extracted strings as well as heuristic translation and UI/configuration candidates.
 - Deduplicates the combined output globally and deduplicates each per-DLL output independently.
 - Uses plain TXT files with `// DLL / Class` headings and source strings as keys.
-- Archives ambiguous strings losslessly, including strings containing newlines or escape-sensitive characters.
+- Archives ambiguous strings losslessly, including strings containing newlines or escape-sensitive characters, and shows complete searchable previews in the main TXT lists.
 - Keeps special-string IDs stable across global, UI, and per-plugin exports. Supports strict UTF-8 and BOM-marked UTF-16 decoding.
 - Limits text and `.resources` payloads to 32,000,000 bytes before reading and skips unrelated binary resources.
 - Logs directory-access errors while continuing with accessible sibling directories; skips directory links to avoid recursive loops.
@@ -131,7 +131,7 @@ Reset=
 
 ## Special strings and output format
 
-Ordinary single-line originals are written as source keys followed by `=`. Strings containing `=`, backslashes, leading/trailing whitespace, control characters, newlines, or comment-like prefixes can be ambiguous in a simple TXT format. Such entries are marked as special and preserved losslessly in `SpecialStrings_Exact.txt` and `ByPlugin_Special/` as Base64-encoded raw UTF-16LE code units.
+Ordinary single-line originals are written as source keys followed by `=`. Strings containing `=`, backslashes, leading/trailing whitespace, control characters, newlines, or comment-like prefixes can be ambiguous in a simple TXT format. Such entries are marked as special, followed by a complete `// preview=` comment (line breaks shown as `\n` / `\r`, backslashes as `\\`), and preserved losslessly in `SpecialStrings_Exact.txt` and `ByPlugin_Special/` as Base64-encoded raw UTF-16LE code units. Multiline descriptions are searchable directly in the main and per-plugin lists. Previews are reading comments, not editable translation keys.
 
 **The Base64 value is not a translation key.** For in-game translation, use the key captured by XUnity.AutoTranslator at runtime and follow its supported syntax. See [output format and special-string notes](docs/OUTPUT_FORMAT.md).
 

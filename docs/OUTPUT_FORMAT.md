@@ -24,10 +24,18 @@ Reset=
 
 Keys containing `=`, backslash, whitespace at the start/end, control characters,
 line breaks, or comment prefixes could break or change meaning in a simple TXT
-translation format. They are replaced by an explanatory comment in normal TXT,
+translation format. They are represented by an archive reference and a complete,
+searchable `// preview=` comment in normal TXT,
 and stored in `SpecialStrings_Exact.txt` / `ByPlugin_Special` as the **raw UTF-16
 code units encoded with Base64**. This archive is lossless (even for isolated
 surrogates) but it is NOT a ready-made XUnity translation key.
+
+From v2.6.3, the preview appears immediately after each `[SPECIAL:...]` reference
+in all main lists and per-plugin lists. Multiline configuration descriptions
+therefore remain visible while browsing `UIStrings.txt` or `UI_HighConfidence.txt`.
+Actual line breaks appear as literal `\n` / `\r`, and literal backslashes as `\\`.
+Previews are comments for inspection, not editable translation keys; the exact
+archive and its IDs are unchanged. No paragraphs are split into new source keys.
 
 From v2.6.1, `[SPECIAL:...]` and archive `id` fields use the same full SHA-256
 of the original UTF-16LE code units, independent of DLL, class or method.
