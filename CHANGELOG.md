@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.6.5] - 2026-10-19
+
+- Recover finite UI labels produced by static string-array projections, such as `Bra: On`, when plug-ins assemble them at runtime from separate label and state strings.
+- Keep these reconstructed labels in the normal string exports and classify them as direct UI strings.
+- Verify the new extraction against 303 plug-in DLLs; 32 clothing-kind/state labels were recovered from the ClothingStateMenu DLL.
+
 ## [2.6.4] - 2026-10-19
 
 - Show a complete searchable preview beside every special-string reference in main and per-plugin TXT lists. Multiline configuration descriptions previously appeared only as IDs there, making them look missing.

@@ -29,18 +29,21 @@ internal static class Scanner
             {
                 using var asm = AssemblyDefinition.ReadAssembly(file, new ReaderParameters { ReadSymbols = false, InMemory = false });
                 foreach (var type in Flatten(asm.MainModule.Types))
-                foreach (var method in type.Methods)
                 {
-                    if (!method.HasBody) continue;
-                    var instructions = method.Body.Instructions;
-                    for (int i = 0; i < instructions.Count; i++)
+                    foreach (var method in type.Methods)
                     {
-                        var ins = instructions[i];
-                        if (ins.OpCode != OpCodes.Ldstr || ins.Operand is not string s || s.Length == 0)
-                            continue;
-                        var (usage, target) = CallInspector.Inspect(instructions, i);
-                        rows.Add(new RawRow(relative, "IL", type.FullName, method.FullName, $"IL_{ins.Offset:X4}", s, usage, target));
+                        if (!method.HasBody) continue;
+                        var instructions = method.Body.Instructions;
+                        for (int i = 0; i < instructions.Count; i++)
+                        {
+                            var ins = instructions[i];
+                            if (ins.OpCode != OpCodes.Ldstr || ins.Operand is not string s || s.Length == 0)
+                                continue;
+                            var (usage, target) = CallInspector.Inspect(instructions, i);
+                            rows.Add(new RawRow(relative, "IL", type.FullName, method.FullName, $"IL_{ins.Offset:X4}", s, usage, target));
+                        }
                     }
+                    rows.AddRange(StaticStringProjection.Read(type, relative));
                 }
                 ReadResources(file, relative, rows, errors, maxResourceBytes);
                 if (dlls % 20 == 0) Console.WriteLine($"Scanned {dlls} DLLs...");

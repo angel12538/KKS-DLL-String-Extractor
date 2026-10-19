@@ -84,7 +84,7 @@ internal static class TxtExporter
         string dll = Path.GetFileName(r.Dll.Replace('\\', '/'));
         string source = r.Source;
         string label;
-        if (r.Kind == "IL")
+        if (r.Kind is "IL" or "STATIC_COMPOSITE")
         {
             // Cecil type names use '/' for nested types and '.' for namespaces.
             string leaf = source.Split('/').Last();

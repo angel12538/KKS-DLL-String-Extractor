@@ -19,6 +19,7 @@ Reset=
 - `AllStrings.txt`: **global** exact, case-sensitive deduplication. The first encountered source is shown.
 - `ByPlugin/*.txt`: each DLL deduplicated separately; duplicates between different DLLs are allowed.
 - `UIStrings.txt` and `UI_HighConfidence.txt`: heuristic subsets only. Technical data remain in `AllStrings.txt`.
+- Finite labels built from a static string dictionary and a static string array are reconstructed when a UI `Select` lambda combines them with a literal separator. For example, `Bra`, `On`, and `: ` become `Bra: On` in the normal exports.
 
 ## Special originals / 特殊原文
 
@@ -50,8 +51,9 @@ runtime-captured key. Never use a Base64 field itself as the translation key.
 ## Limitations
 
 - Static extraction is not the same as UI localization.
-- Strings made at runtime, encrypted/obfuscated data, and some serialized
-  resources may not be available.
+- Other strings made at runtime, encrypted/obfuscated data, and some serialized
+  resources may not be available. Runtime reconstruction currently covers only
+  the finite static UI projection described above.
 - Calling API proximity is a heuristic, not a full IL dataflow proof.
 - The program does not modify game plugins or supply translation injection.
 - Resource lines may be extracted separately from the whole resource document.

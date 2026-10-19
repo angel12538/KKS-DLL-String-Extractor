@@ -1,4 +1,4 @@
-KKS DLL 文本提取工具 v2.6.4（Windows x64）
+KKS DLL 文本提取工具 v2.6.5（Windows x64）
 
 使用方法
 1. 完整解压此 ZIP，无需另外安装 .NET，也无需管理员权限。
