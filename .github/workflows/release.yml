@@ -105,14 +105,14 @@ jobs:
 
     steps:
       - name: Download Windows build
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: KKS-DLL-String-Extractor-win-x64
           path: win-x64
 
 
       - name: Download Linux build
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: KKS-DLL-String-Extractor-linux-x64
           path: linux-x64
