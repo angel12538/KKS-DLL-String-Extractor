@@ -51,7 +51,7 @@ jobs:
           ./dist/win-x64/KKS_DLL_String_Extractor.exe --self-test
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: KKS-DLL-String-Extractor-win-x64
           path: dist/win-x64
@@ -87,7 +87,7 @@ jobs:
           ./dist/linux-x64/KKS_DLL_String_Extractor --self-test
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: KKS-DLL-String-Extractor-linux-x64
           path: dist/linux-x64
